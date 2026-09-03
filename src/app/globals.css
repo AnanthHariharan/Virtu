@@ -1,0 +1,682 @@
+/* ══════════════════════════════════════════════════════════════════════
+   VIRTU — the design system
+
+   Swiss International Typographic Style, taken seriously rather than as
+   costume. The rules are few and they are load-bearing:
+
+   1. THE GRID IS VISIBLE. Every rule is exactly 1px, every division of the
+      page happens on a line you can see. Nothing floats; nothing has a
+      shadow; nothing is rounded. Structure is the ornament.
+   2. FLUSH LEFT, RAGGED RIGHT. No centred text anywhere except a single
+      empty state. Type aligns to a left margin and stays there.
+   3. THREE COLOURS. Paper, ink, and one red. A fourth would be a decision
+      to make forever after. Completion is a rule and a strikethrough, not
+      a green tick.
+   4. TWO TYPEFACES, FOUR SIZES. Archivo — a grotesque in the Helvetica
+      lineage — carries everything read as language. IBM Plex Mono, small
+      and letterspaced and uppercase, carries everything read as a label or
+      a figure. If a thing is a number, it is tabular.
+   5. ALL COLOUR COMES FROM TOKENS ON BARE :root. Never declare a colour
+      only inside a media query or a [data-theme] block: it will not apply
+      in the un-stamped default state, and the page will render one theme's
+      text on the other theme's ground.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── ground and ink ── */
+  --paper:    #fbfbf9;
+  --paper-2:  #f2f2ef;
+  --paper-3:  #e9e9e5;
+  --surface:  #ffffff;
+  --ink:      #111110;
+  --ink-2:    #56564f;
+  --ink-3:    #8d8d85;
+  --rule:     #e0e0da;
+  --rule-2:   #c7c7c0;
+
+  /* ── the one accent ── */
+  --accent:     #e0241b;
+  --accent-ink: #ffffff;
+  --accent-wash:#fdecea;
+
+  /* ── type ── */
+  --sans: "Archivo", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* tabular, lining figures — mandatory in any column of numbers */
+  --tnum: "tnum" 1, "lnum" 1, "cv01" 1;
+
+  /* ── metrics ── */
+  --measure: 680px;
+  --rail:    212px;
+  --pad:     20px;
+  --tap:     44px;                       /* never smaller, anywhere */
+  --safe-b:  env(safe-area-inset-bottom, 0px);
+  --safe-t:  env(safe-area-inset-top, 0px);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:   #0c0c0b;
+    --paper-2: #151514;
+    --paper-3: #1d1d1b;
+    --surface: #121211;
+    --ink:     #f4f4f0;
+    --ink-2:   #a3a39a;
+    --ink-3:   #6e6e66;
+    --rule:    #262624;
+    --rule-2:  #3a3a37;
+    --accent:     #ff3b30;
+    --accent-ink: #0c0c0b;
+    --accent-wash:#2a1413;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0c0c0b; --paper-2: #151514; --paper-3: #1d1d1b; --surface: #121211;
+  --ink: #f4f4f0; --ink-2: #a3a39a; --ink-3: #6e6e66;
+  --rule: #262624; --rule-2: #3a3a37;
+  --accent: #ff3b30; --accent-ink: #0c0c0b; --accent-wash: #2a1413;
+  color-scheme: dark;
+}
+
+/* ── reset ────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+button, input, textarea, select { font: inherit; color: inherit; letter-spacing: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, h4, p, ul, ol { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ══ shell ════════════════════════════════════════════════════════════
+   Mobile: running head, scrolling leaf, tab bar at the foot.
+   Desktop (≥ 900px): the tab bar becomes a left rail and the head sits
+   above the measure. One layout, two arrangements — never two codebases.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.app { display: flex; flex-direction: column; min-height: 100dvh; }
+
+.rail { display: none; }
+
+.head {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  padding: calc(var(--safe-t) + 14px) var(--pad) 13px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+}
+
+.head-name {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.14em;
+}
+
+.head-meta {
+  font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--tnum);
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3);
+  display: flex; align-items: center; gap: 10px; white-space: nowrap;
+}
+
+/* An unsent count is information, not an error. It gets the accent because
+   it is the one thing on the page that is about to change by itself. */
+.unsent { color: var(--accent); }
+.unsent::before {
+  content: ""; display: inline-block; width: 5px; height: 5px;
+  background: var(--accent); margin-right: 6px; vertical-align: 1px;
+}
+
+.leaf {
+  flex: 1; width: 100%; max-width: var(--measure); margin: 0 auto;
+  padding: 0 var(--pad) calc(var(--tap) + var(--safe-b) + 56px);
+}
+
+/* ── the foot: primary navigation ── */
+
+.foot {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  background: var(--paper);
+  border-top: 1px solid var(--rule);
+  padding-bottom: var(--safe-b);
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+}
+
+.foot a {
+  min-height: var(--tap);
+  padding: 9px 2px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  color: var(--ink-3);
+  border-right: 1px solid var(--rule);
+  transition: color .12s linear;
+}
+.foot a:last-child { border-right: 0; }
+.foot a.on { color: var(--ink); }
+.foot a.on .lbl { color: var(--accent); }
+
+.foot .lbl {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+
+@media (min-width: 900px) {
+  .app { flex-direction: row; }
+
+  .rail {
+    display: flex; flex-direction: column;
+    width: var(--rail); flex: 0 0 var(--rail);
+    border-right: 1px solid var(--rule);
+    position: sticky; top: 0; height: 100dvh;
+    background: var(--paper);
+  }
+  .rail-mark {
+    padding: 22px var(--pad) 20px;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.22em;
+  }
+  .rail-mark b { color: var(--accent); font-weight: 500; }
+
+  .rail nav { display: flex; flex-direction: column; }
+  .rail nav a {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px var(--pad);
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-2);
+    font-size: 14px;
+    transition: background .12s linear, color .12s linear;
+  }
+  .rail nav a:hover { background: var(--paper-2); color: var(--ink); }
+  .rail nav a.on { color: var(--ink); background: var(--paper-2); box-shadow: inset 2px 0 0 var(--accent); }
+  .rail-foot { margin-top: auto; padding: 16px var(--pad); border-top: 1px solid var(--rule); }
+
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .head { padding-left: 28px; padding-right: 28px; }
+  .leaf { padding: 0 28px 96px; margin: 0; }
+  .foot { display: none; }
+}
+
+/* ══ typography ═════════════════════════════════════════════════════ */
+
+/* The display line. Tight tracking is what makes a grotesque look set
+   rather than typed; at this size the default is far too loose. */
+.display {
+  font-size: clamp(30px, 7.5vw, 42px);
+  line-height: 1.04;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  margin: 30px 0 0;
+}
+.display .thin { color: var(--ink-3); font-weight: 400; }
+.display .rule { color: var(--accent); }
+
+.deck {
+  margin-top: 12px;
+  font-size: 16px; line-height: 1.45; color: var(--ink-2);
+  max-width: 46ch;
+}
+.deck b { font-weight: 500; color: var(--ink); }
+
+.lede {
+  margin-top: 10px; font-size: 13px; line-height: 1.5; color: var(--ink-3);
+  max-width: 54ch;
+}
+
+/* The micro label. Everything that is a category, a unit or a heading of a
+   column is set in this and nothing else. */
+.label {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.15em; color: var(--ink-3);
+}
+
+/* A section head: label at the left, rule filling the measure, count at the
+   right. The rule is the design — it is what makes a list of lists read as
+   one page rather than eight cards. */
+.section {
+  display: flex; align-items: center; gap: 14px;
+  margin: 38px 0 0;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--ink);
+}
+.section h2 {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.15em; color: var(--ink);
+}
+.section .fill { flex: 1; }
+.section .count {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+  color: var(--ink-3); font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--tnum);
+}
+.section.sub { border-bottom-color: var(--rule-2); margin-top: 26px; }
+.section.sub h2 { color: var(--ink-3); }
+
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-feature-settings: var(--tnum); }
+
+/* ══ the row ════════════════════════════════════════════════════════
+   The shared unit of every module. Mark, body, figure — three columns on
+   a hairline. Everything in Virtu that is a list is a stack of these. */
+
+.row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: baseline; gap: 12px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 13px 0 12px;
+  border-bottom: 1px solid var(--rule);
+  color: inherit;
+}
+button.row { transition: background .1s linear; }
+button.row:hover { background: var(--paper-2); }
+button.row:active { background: var(--paper-3); }
+
+.row .mk {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  color: var(--ink-3); font-variant-numeric: tabular-nums;
+  font-feature-settings: var(--tnum);
+  letter-spacing: 0.04em;
+}
+.row .mk.on { color: var(--accent); }
+
+.row .bd { min-width: 0; }
+.row .t {
+  display: block; font-size: 15px; line-height: 1.34;
+  overflow-wrap: anywhere;
+}
+.row .m {
+  display: block; margin-top: 3px;
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3);
+}
+.row .v {
+  font-family: var(--mono); font-size: 13px;
+  font-variant-numeric: tabular-nums; font-feature-settings: var(--tnum);
+  color: var(--ink-2); white-space: nowrap;
+}
+
+/* Completion is a strikethrough and a drop in contrast. Not a colour. */
+.row.done .t { text-decoration: line-through; text-decoration-thickness: 1px; color: var(--ink-3); }
+.row.done .mk { color: var(--ink); }
+
+.row.timed { grid-template-columns: 42px 1fr auto; }
+.row.timed .mk { font-size: 10px; letter-spacing: 0.02em; }
+.row:last-of-type { border-bottom: 1px solid var(--rule); }
+
+/* ══ figures ════════════════════════════════════════════════════════
+   A stat grid, divided by hairlines rather than by gaps. The negative
+   space between cells is the same rule that runs under the section head,
+   which is what holds the page together. */
+
+.figures {
+  display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr);
+  border-bottom: 1px solid var(--rule);
+}
+.figures > * { border-right: 1px solid var(--rule); padding: 16px 14px 15px 0; }
+.figures > *:last-child { border-right: 0; }
+.figures > * + * { padding-left: 14px; }
+
+.fig-n {
+  font-family: var(--mono); font-size: 26px; font-weight: 400; line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; font-feature-settings: var(--tnum);
+  display: block;
+}
+.fig-n .u { font-size: 12px; color: var(--ink-3); margin-left: 3px; letter-spacing: 0; }
+.fig-l {
+  display: block; margin-top: 8px;
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.13em; color: var(--ink-3);
+}
+.fig-n.hot { color: var(--accent); }
+
+/* ══ controls ═══════════════════════════════════════════════════════ */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: var(--tap); padding: 0 18px;
+  border: 1px solid var(--ink);
+  background: transparent; color: var(--ink);
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.13em;
+  transition: background .12s linear, color .12s linear, border-color .12s linear;
+}
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn:active { transform: translateY(1px); }
+.btn[disabled] { opacity: .3; pointer-events: none; }
+
+.btn.fill { background: var(--ink); color: var(--paper); }
+.btn.fill:hover { background: var(--ink-2); border-color: var(--ink-2); }
+
+.btn.accent { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.accent:hover { filter: brightness(1.08); background: var(--accent); color: var(--accent-ink); }
+
+.btn.quiet { border-color: var(--rule-2); color: var(--ink-2); }
+.btn.quiet:hover { background: var(--paper-2); color: var(--ink); border-color: var(--ink-3); }
+
+.btn.sm { min-height: 34px; padding: 0 12px; font-size: 10px; letter-spacing: 0.11em; }
+.btn.wide { width: 100%; }
+
+.btn-row { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+.btn-row .grow { flex: 1; }
+
+/* Chips — a horizontal filter band. Square, hairline, one selected. */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.chip {
+  min-height: 34px; padding: 0 11px;
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--rule-2); color: var(--ink-2);
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.11em;
+  transition: all .12s linear;
+}
+.chip:hover { border-color: var(--ink-3); color: var(--ink); }
+.chip.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.chip .n { opacity: .55; font-variant-numeric: tabular-nums; }
+
+/* Segmented control — chips welded into one bar. */
+.seg {
+  display: flex; border: 1px solid var(--rule-2);
+  overflow-x: auto; scrollbar-width: none;
+}
+.seg::-webkit-scrollbar { display: none; }
+.seg button {
+  flex: 1 0 auto; min-height: 40px; padding: 0 14px; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center;
+  border-right: 1px solid var(--rule-2);
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.11em; color: var(--ink-3);
+  transition: all .12s linear;
+}
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--ink); color: var(--paper); }
+
+/* ── fields ── */
+
+.field { display: block; margin-top: 20px; }
+.field > .label { display: block; margin-bottom: 8px; }
+
+.input, .area {
+  width: 100%; padding: 12px 13px; min-height: var(--tap);
+  background: var(--surface);
+  border: 1px solid var(--rule-2);
+  color: var(--ink); font-size: 16px;                 /* 16px: iOS will not zoom */
+  transition: border-color .12s linear;
+}
+.input:focus, .area:focus { outline: none; border-color: var(--ink); }
+.area { min-height: 116px; resize: vertical; line-height: 1.5; }
+.input::placeholder, .area::placeholder { color: var(--ink-3); }
+
+/* The stepper: a big tabular figure between two square buttons. The whole
+   point is that a set can be logged without a keyboard ever appearing. */
+.stepper { display: flex; border: 1px solid var(--rule-2); }
+.stepper button {
+  width: 54px; flex: 0 0 54px; min-height: 58px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 19px; color: var(--ink-2);
+  transition: background .1s linear;
+}
+.stepper button:hover { background: var(--paper-2); color: var(--ink); }
+.stepper button:active { background: var(--paper-3); }
+.stepper .val {
+  flex: 1; min-width: 0;
+  border-left: 1px solid var(--rule-2); border-right: 1px solid var(--rule-2);
+  text-align: center; background: transparent;
+  font-family: var(--mono); font-size: 22px;
+  font-variant-numeric: tabular-nums; font-feature-settings: var(--tnum);
+  letter-spacing: -0.01em;
+  padding: 0 4px;
+  -moz-appearance: textfield;
+}
+.stepper .val::-webkit-outer-spin-button,
+.stepper .val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper .val:focus { outline: none; background: var(--paper-2); }
+.stepper .unit {
+  display: flex; align-items: center; padding: 0 13px;
+  border-left: 1px solid var(--rule-2);
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3);
+}
+
+/* ══ the sheet ══════════════════════════════════════════════════════
+   Every piece of data entry happens in one of these. The previous version
+   used window.prompt() for all of it, which cannot show a unit, cannot
+   offer a default, cannot be cancelled halfway without losing the lot, and
+   looks like a browser rather than like the app. */
+
+.scrim {
+  position: fixed; inset: 0; z-index: 90;
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
+  animation: fade .14s ease-out;
+}
+@keyframes fade { from { opacity: 0 } }
+
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
+  background: var(--paper);
+  border-top: 1px solid var(--ink);
+  padding: 0 var(--pad) calc(var(--safe-b) + 22px);
+  max-height: 88dvh; overflow-y: auto;
+  animation: rise .2s cubic-bezier(.2,.7,.3,1);
+}
+@keyframes rise { from { transform: translateY(100%) } }
+
+@media (min-width: 700px) {
+  .sheet {
+    left: 50%; right: auto; bottom: auto; top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(520px, calc(100vw - 48px));
+    border: 1px solid var(--ink);
+    animation: pop .16s cubic-bezier(.2,.7,.3,1);
+  }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, -46%) } }
+}
+
+.sheet-head {
+  position: sticky; top: 0; background: var(--paper); z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 18px 0 13px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--ink);
+}
+.sheet-head h3 {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.14em;
+}
+.sheet-x {
+  width: 32px; height: 32px; margin-right: -6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-3); font-size: 17px; line-height: 1;
+}
+.sheet-x:hover { color: var(--ink); }
+.sheet .btn-row { margin-top: 26px; }
+
+/* ══ module-specific ════════════════════════════════════════════════ */
+
+/* — the japa counter — */
+.pad {
+  width: 100%; margin-top: 22px;
+  border: 1px solid var(--ink);
+  background: var(--surface);
+  padding: 34px 20px 26px;
+  display: flex; flex-direction: column; align-items: center;
+  user-select: none; -webkit-user-select: none;
+  transition: background .06s linear;
+}
+.pad:active { background: var(--paper-3); }
+.pad .count {
+  font-family: var(--mono); font-size: clamp(64px, 22vw, 108px); line-height: .9;
+  font-variant-numeric: tabular-nums; font-feature-settings: var(--tnum);
+  letter-spacing: -0.045em;
+}
+.pad .of {
+  margin-top: 12px;
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.16em; color: var(--ink-3);
+}
+.beads {
+  display: grid; grid-template-columns: repeat(18, 1fr); gap: 4px;
+  width: 100%; max-width: 300px; margin: 26px 0 20px;
+}
+.bead { height: 4px; background: var(--rule); }
+.bead.f { background: var(--accent); }
+.pad .hint {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.13em; color: var(--ink-3);
+}
+
+/* — training — */
+.sets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.set {
+  min-width: 74px; min-height: 46px; padding: 6px 10px;
+  border: 1px solid var(--rule-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 12px;
+  font-variant-numeric: tabular-nums; font-feature-settings: var(--tnum);
+  color: var(--ink-3);
+  transition: all .12s linear;
+}
+.set:hover { border-color: var(--ink-3); color: var(--ink); }
+.set .n { font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 3px; opacity: .7; }
+.set.done { border-color: var(--ink); color: var(--ink); background: var(--paper-2); }
+.set.pr { border-color: var(--accent); color: var(--accent); }
+.set.add { border-style: dashed; min-width: 46px; font-size: 16px; }
+
+.move { padding: 20px 0 18px; border-bottom: 1px solid var(--rule); }
+.move-h { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.move-h .nm { font-size: 16px; letter-spacing: -0.012em; }
+.move-h .sc {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.move-m {
+  display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 12px;
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--ink-3);
+}
+.move-m b { font-weight: 400; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pr-flag { color: var(--accent); }
+
+/* — a progress rule: the only chart in the app that is not a sparkline — */
+.bar { height: 2px; background: var(--rule); margin-top: 9px; }
+.bar i { display: block; height: 100%; background: var(--ink); }
+.bar.hot i { background: var(--accent); }
+
+/* — sparkline — */
+.spark { display: block; width: 100%; height: 42px; margin-top: 14px; }
+.spark path { fill: none; stroke: var(--ink); stroke-width: 1.25; vector-effect: non-scaling-stroke; }
+.spark .base { stroke: var(--rule); stroke-width: 1; }
+.spark circle { fill: var(--accent); }
+
+/* — commonplace — */
+.note {
+  padding: 18px 0 17px; border-bottom: 1px solid var(--rule);
+}
+.note-h {
+  display: flex; gap: 12px; align-items: baseline; justify-content: space-between;
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.11em; color: var(--ink-3);
+}
+.note-h .hd { color: var(--accent); }
+.note-t { margin-top: 9px; font-size: 16px; line-height: 1.46; }
+.note-s {
+  margin-top: 10px; display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.11em; color: var(--ink-2);
+  border-bottom: 1px solid var(--rule-2); padding-bottom: 2px;
+}
+.note-s:hover { color: var(--accent); border-color: var(--accent); }
+
+/* — the module index — */
+.mod {
+  display: grid; grid-template-columns: 26px 1fr auto;
+  gap: 14px; align-items: start;
+  padding: 18px 0; border-bottom: 1px solid var(--rule);
+}
+.mod .ic { color: var(--ink); padding-top: 1px; }
+.mod .ic.off { color: var(--ink-3); opacity: .5; }
+.mod h4 { font-size: 15px; font-weight: 500; letter-spacing: -0.01em; }
+.mod p { margin-top: 4px; font-size: 13px; color: var(--ink-2); line-height: 1.42; }
+.mod .owns {
+  margin-top: 7px;
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--ink-3);
+}
+.mod.planned { opacity: .55; }
+
+/* A switch, built square. */
+.sw {
+  width: 46px; height: 26px; flex: 0 0 46px;
+  border: 1px solid var(--rule-2); background: transparent;
+  position: relative; transition: all .14s linear;
+}
+.sw i {
+  position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  background: var(--ink-3); transition: all .14s cubic-bezier(.2,.7,.3,1);
+}
+.sw.on { border-color: var(--accent); background: var(--accent-wash); }
+.sw.on i { left: 22px; background: var(--accent); }
+.sw[disabled] { opacity: .35; }
+
+/* — text states — */
+.empty {
+  margin-top: 26px; padding: 30px 0 34px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-3); font-size: 14px; line-height: 1.5; max-width: 44ch;
+}
+.empty b { display: block; color: var(--ink); font-weight: 500; margin-bottom: 6px; font-size: 15px; }
+
+.foot-note {
+  margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--rule);
+  font-size: 12px; line-height: 1.55; color: var(--ink-3); max-width: 52ch;
+}
+.foot-note b { font-weight: 400; color: var(--ink-2); }
+
+.back {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 18px; min-height: 34px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.13em; color: var(--ink-3);
+}
+.back:hover { color: var(--accent); }
+
+/* The quick-capture button. One tap from anywhere to an unstructured line —
+   the entry point that keeps the ledger honest on days you are busy. */
+.quick {
+  position: fixed; right: var(--pad); z-index: 45;
+  bottom: calc(var(--tap) + var(--safe-b) + 20px);
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  font-size: 22px; line-height: 1;
+  transition: filter .12s linear;
+}
+.quick:hover { filter: brightness(1.1); }
+@media (min-width: 900px) { .quick { bottom: 28px; right: 28px; } }

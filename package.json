@@ -1,0 +1,26 @@
+{
+  "name": "virtu",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A personal operating system — anushtanas, training, meals, reading, writing, work, measures — in one ledger.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm run icons && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/icons.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}
