@@ -50,15 +50,40 @@ Everything you will actually want to change is plain typed data in
 
 | File | What it defines |
 |---|---|
-| `anushtanas.ts` | The nitya-karma, by part of the day |
+| `anushtanas.ts` | The nitya-karma, and the twelve brahma-yajñam praśnas |
 | `program.ts` | The training split — sessions, movements, schemes, loads |
-| `menu.ts` | The standing menu, by meal |
+| `menu.ts` | The five bowls, the item catalogue, and the aisles |
 | `heads.ts` | Commonplace heads, and the measures kept |
 
 Each carries a `VERSION`. Bump it after an edit and the next app open reseeds
 **that collection only** — your logged events are never touched, because they
 belong to the ledger rather than to the plan that produced them. Reseeding the
-programme does not erase a lift's working load or its record.
+programme does not erase a lift's working load or its record, and anything
+that has left the data is archived rather than left orphaned in the interface.
+
+### Three things about the data worth knowing
+
+**The praśna cycle.** The twelve brahma-yajñam praśnas are recited one a day,
+in the order they are listed. The one due today is the one *after* the last
+recorded, wrapping at the end — so missing a day costs you a day rather than a
+praśna, and you resume where you stopped instead of where the calendar thinks
+you ought to be. Because the corpus is finite and ordered, coverage is exactly
+computable, which makes it the only measure in the application with hard
+ground truth.
+
+**Loads.** `UNIT` in `program.ts` is one constant, currently `"lb"`. It labels
+barbell and dumbbell figures only; machine stacks are numbered on their own
+scale and recorded as-is. A load marked `perSide` is per hand — a pair of 30s
+reads `30 × 2`. Cardio is logged in minutes and contributes nothing to volume
+load, which is correct, because minutes on a rower are not weight moved.
+
+**Grocery lists are derived, never maintained.** Bowls reference an ITEMS
+catalogue by slug rather than naming their ingredients, which is what lets
+rice appearing in three bowls become one line on the list. Prepared mixes
+declare their `parts`, so the Indian bowl keeps `kachumber` as one line in the
+recipe and arrives at the shop as cucumber, tomato, onion and a lemon. Every
+quantity is in grams, because grams are the only measure that can be added up;
+the household measures beside them are hints and are never used in arithmetic.
 
 ---
 
@@ -124,6 +149,10 @@ unstructured line; it surfaces in Commonplace waiting for a head. Measures —
 weight, sleep, resting pulse — is new, and is the module the others are
 ultimately for.
 
+**Meals became the table.** Two sittings a day drawn from five bowls, with
+three views over the same data: what you ate, how each bowl is built, and the
+shopping it all adds up to.
+
 **The design is Swiss.** See `CLAUDE.md`. Three colours, two typefaces, a
 visible grid, and no decoration anywhere.
 
@@ -147,9 +176,6 @@ truth.
 
 ## What it is still waiting on
 
-- **The brahma-yajñam corpus.** The seed deliberately contains no portions;
-  the canon differs by śākhā and sampradāya and must come from your paramparā,
-  not from a model. Once seeded, coverage is exactly computable and is the one
-  measure in the whole application with hard ground truth.
-- **Your real training split and menu.** What is in `src/data` is a working
-  placeholder. Replacing it is an edit to two files and a version bump.
+- **Nothing, for the moment.** The praśnas, the split and the bowls are all
+  in. What is still worth adding is a rest timer between sets, and a way to
+  edit `src/data` from inside the app rather than in an editor.

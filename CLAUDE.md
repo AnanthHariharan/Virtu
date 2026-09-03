@@ -126,12 +126,21 @@ Taptic Engine. If it stops working the fallbacks are a Bluetooth clicker
 (already supported — the japa counter listens for space and arrow keys) or a
 Capacitor wrap, which would reuse this entire codebase.
 
+## Two data rules that are not obvious
+
+**The praśna cycle is relative, not calendrical.** The brahma-yajñam praśna due
+today is the one after the last *recorded*, wrapping at the end of PORTIONS —
+never `dayOfYear % 12`. A missed day must cost a day, not a praśna.
+
+**Grams are the only quantity.** Bowls reference the ITEMS catalogue by slug so
+an ingredient used in three bowls is one line on the grocery list, and every
+amount is in grams because household measures cannot be added up. The `hint`
+field is display only; never do arithmetic with it. A prepared mix declares
+`parts` so the recipe keeps it whole while the grocery list expands it into
+what can go in a basket.
+
 ## Not yet built
 
-- **The brahma-yajñam canon.** Deliberately unseeded. The corpus and its order
-  differ by śākhā and sampradāya and must come from the user's paramparā, not
-  from a model. Once seeded, coverage is exactly computable and is the only
-  measure here with hard ground truth.
 - **The MCP server.** The ledger as a queryable surface, with agent writes
   going through the same `log()` as everything else.
 - **Extraction.** `capture` events are stored raw and unstructured. Wire them

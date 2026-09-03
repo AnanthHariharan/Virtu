@@ -7,7 +7,7 @@ import {
 } from "@/components/ui";
 import { useDay, useEntities, useKind } from "@/hooks/useLedger";
 import { log, patchState } from "@/lib/ledger";
-import { PROGRAM, sessionFor, UNIT, type Movement } from "@/data/program";
+import { PROGRAM, sessionFor, UNIT, repLabel, repTarget, type Movement } from "@/data/program";
 import { DAYS, e1rm } from "@/lib/time";
 import { tap } from "@/lib/haptics";
 import type { VEvent } from "@/lib/types";
@@ -38,6 +38,8 @@ export default function Train() {
   const todaySets = useMemo(
     () => day.filter(e => e.kind === "set") as VEvent<"set">[], [day]
   );
+  // Cardio is logged in minutes and carries no load, so it contributes
+  // nothing here — which is correct, and why weight is the multiplier.
   const volume = todaySets.reduce(
     (n, e) => n + Number(e.payload?.weight ?? 0) * Number(e.payload?.reps ?? 0), 0
   );
@@ -73,7 +75,7 @@ export default function Train() {
     const last = done[0]?.payload;                     // most recent first
     const ent = entityFor(m.slug);
     setWeight(last ? last.weight : Number(ent?.state?.load ?? m.load ?? 0));
-    setReps(last ? last.reps : (m.reps === "max" ? 8 : m.reps));
+    setReps(last ? last.reps : repTarget(m.reps));
     setLogging(m);
   }
 
@@ -100,7 +102,7 @@ export default function Train() {
       <Display
         deck={
           todaySets.length
-            ? <><b>{todaySets.length} sets</b> at {volume.toLocaleString()} {UNIT} of volume load.</>
+            ? <><b>{todaySets.length} {todaySets.length === 1 ? "set" : "sets"}</b> at {volume.toLocaleString()} {UNIT} of volume load.</>
             : scheduled
               ? <><b>{scheduled.name}</b> is scheduled for {DAYS[dow]}. Nothing logged yet.</>
               : <>Nothing is scheduled for {DAYS[dow]}. Pick a session to run it anyway.</>
@@ -139,7 +141,9 @@ export default function Train() {
             <div className="move-h">
               <span className="nm">{m.name}</span>
               <span className="sc">
-                {m.sets} × {m.reps}{!m.bodyweight && load ? ` · ${load}${UNIT}` : m.bodyweight ? " · BW" : ""}
+                {m.sets} × {m.time ? `${repLabel(m.reps)} min` : repLabel(m.reps)}
+                {m.eachSide ? " each" : ""}
+                {load ? ` · ${load}${m.perSide ? " × 2" : ""}` : m.bodyweight ? " · BW" : ""}
               </span>
             </div>
 
@@ -150,8 +154,10 @@ export default function Train() {
                 if (!e) {
                   return (
                     <button key={i} className="set" onClick={() => openLogger(m)}>
-                      <span className="n">Set {i + 1}</span>
-                      {m.bodyweight ? `BW · ${m.reps}` : `${load || "—"} · ${m.reps}`}
+                      <span className="n">{m.time ? "Bout" : `Set ${i + 1}`}</span>
+                      {m.time ? `${repLabel(m.reps)}′`
+                        : m.bodyweight || !load ? repLabel(m.reps)
+                        : `${load} · ${repLabel(m.reps)}`}
                     </button>
                   );
                 }
@@ -159,8 +165,10 @@ export default function Train() {
                 const pr = !!best && e1rm(p.weight, p.reps) >= best.e1rm;
                 return (
                   <div key={i} className={"set done" + (pr ? " pr" : "")}>
-                    <span className="n">Set {i + 1}</span>
-                    {p.weight > 0 ? `${p.weight} × ${p.reps}` : `BW × ${p.reps}`}
+                    <span className="n">{m.time ? "Bout" : `Set ${i + 1}`}</span>
+                    {m.time ? `${p.reps}′`
+                      : p.weight > 0 ? `${p.weight} × ${p.reps}`
+                      : `BW × ${p.reps}`}
                   </div>
                 );
               })}
@@ -170,10 +178,18 @@ export default function Train() {
             </div>
 
             <div className="move-m">
-              <span>Volume <b>{load_.toLocaleString()} {UNIT}</b></span>
-              <span>Today <b>{todayBest || "—"}</b></span>
-              <span>Best <b>{best ? `${best.weight} × ${best.reps}` : "—"}</b></span>
-              {isPr && <span className="pr-flag">Record pace</span>}
+              {m.time ? (
+                // Minutes are not load. Volume and a one-rep maximum say
+                // nothing about twenty minutes on a rower.
+                <span>Minutes <b>{done.reduce((n, e) => n + e.payload!.reps, 0) || "—"}</b></span>
+              ) : (
+                <>
+                  <span>Volume <b>{load_.toLocaleString()} {UNIT}</b></span>
+                  <span>Today <b>{todayBest || "—"}</b></span>
+                  <span>Best <b>{best ? `${best.weight}${m.perSide ? "×2" : ""} × ${best.reps}` : "—"}</b></span>
+                  {isPr && <span className="pr-flag">Record pace</span>}
+                </>
+              )}
             </div>
           </div>
         );
@@ -195,18 +211,24 @@ export default function Train() {
 
       {/* ── the logger ── */}
       <Sheet title={logging?.name ?? ""} open={!!logging} onClose={() => setLogging(null)}>
-        {logging && !logging.bodyweight && (
-          <Field label={`Weight · ${UNIT}`}>
+        {logging && !logging.bodyweight && !logging.time && (
+          <Field label={logging.perSide ? `Weight · ${UNIT} per hand` : `Weight · ${UNIT}`}>
             <Stepper value={weight} onChange={setWeight} step={2.5} min={0} max={500} unit={UNIT} />
           </Field>
         )}
-        <Field label="Repetitions">
-          <Stepper value={reps} onChange={setReps} step={1} min={0} max={100} />
+        <Field label={
+          logging?.time ? "Minutes"
+          : logging?.eachSide ? "Repetitions — each side"
+          : "Repetitions"
+        }>
+          <Stepper value={reps} onChange={setReps} step={1} min={0}
+                   max={logging?.time ? 240 : 100} unit={logging?.time ? "min" : undefined} />
         </Field>
 
         {logging && (
           <p className="lede">
-            {logging.sets} × {logging.reps}
+            {logging.sets} × {repLabel(logging.reps)}{logging.time ? " min" : ""}
+            {logging.eachSide ? " each side" : ""}
             {logging.rest ? ` · ${logging.rest}s rest` : ""}
             {logging.note ? ` · ${logging.note}` : ""}
             {(() => {

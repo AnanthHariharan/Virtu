@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Display, Section, Row, Figures, Fig, Note } from "@/components/ui";
 import { useDay, useEntities, useAll, useKind } from "@/hooks/useLedger";
+import { PORTIONS, nextPortion } from "@/data/anushtanas";
 import { log } from "@/lib/ledger";
 import { SLOTS, slotFor, streak, localDate } from "@/lib/time";
 import { tap } from "@/lib/haptics";
@@ -14,8 +15,28 @@ export default function Anushtanas() {
   const rites = useEntities("rite");
   const day = useDay();
   const all = useAll();
-  const japa = useKind("japa");
+  const portions = useKind("portion");
   const slot = slotFor();
+
+  /**
+   * The praśna due today is the one after the last recorded, wrapping at the
+   * end of the cycle. Missing a day therefore costs you a day rather than a
+   * praśna: you resume where you stopped, not where the calendar thinks you
+   * ought to be.
+   */
+  const lastPortion = portions[0]?.payload?.slug;
+  const due = nextPortion(lastPortion);
+  const doneToday = portions.find(e => e.local_date === localDate());
+
+  /** When each praśna was last recited. The corpus is finite, so this is exact. */
+  const lastSeen = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of portions) {
+      const slug = e.payload?.slug;
+      if (slug && !m.has(slug)) m.set(slug, e.local_date);
+    }
+    return m;
+  }, [portions]);
 
   const observed = useMemo(() => new Set(
     day.filter(e => e.kind === "rite" && (e.payload as any)?.observed)
@@ -34,8 +55,21 @@ export default function Anushtanas() {
     if (japaRite && now) router.push("/anushtanas/japa");
   }
 
+  /** Reciting the praśna is the rite; recording one records both. */
+  async function recite() {
+    if (doneToday) return;
+    tap(2);
+    const i = PORTIONS.findIndex(p => p.slug === due.slug);
+    await log("portion", { slug: due.slug, name: due.name, index: i });
+    const rite = rites.find(r => r.meta?.portion);
+    if (rite && !observed.has(rite.slug)) {
+      await log("rite", {
+        slug: rite.slug, name: rite.name, slot: rite.meta.slot, observed: true,
+      });
+    }
+  }
+
   const done = observed.size;
-  const malasToday = japa.filter(e => e.local_date === localDate()).length;
 
   const adherence = useMemo(() => {
     const byDate = new Map<string, Set<string>>();
@@ -64,7 +98,7 @@ export default function Anushtanas() {
         <Figures cols={3}>
           <Fig value={`${done}/${rites.length}`} label="Today" />
           <Fig value={adherence.streak} unit="d" label="Unbroken" hot={adherence.streak >= 7} />
-          <Fig value={malasToday} label="Mālās" />
+          <Fig value={`${lastSeen.size}/${PORTIONS.length}`} label="Praśnas" />
         </Figures>
       </div>
 
@@ -96,6 +130,34 @@ export default function Anushtanas() {
         );
       })}
 
+      <Section count={doneToday ? "recited today" : `${lastSeen.size} of ${PORTIONS.length} covered`}>
+        Brahma-yajñam
+      </Section>
+
+      <Row
+        mark={doneToday ? "●" : "○"}
+        markOn={!doneToday}
+        done={!!doneToday}
+        title={doneToday ? doneToday.payload!.name : due.name}
+        meta={doneToday ? "Recited today" : "Due today — tap to record"}
+        value={`${(PORTIONS.findIndex(p => p.slug === (doneToday?.payload?.slug ?? due.slug))) + 1}/${PORTIONS.length}`}
+        onClick={doneToday ? undefined : recite}
+      />
+
+      <div className="cycle">
+        {PORTIONS.map((p, i) => {
+          const seen = lastSeen.get(p.slug);
+          const isDue = !doneToday && p.slug === due.slug;
+          return (
+            <div key={p.slug} className={"cyc" + (seen ? " seen" : "") + (isDue ? " due" : "")}>
+              <span className="i">{String(i + 1).padStart(2, "0")}</span>
+              <span className="t">{p.name}</span>
+              <span className="d">{seen ?? "—"}</span>
+            </div>
+          );
+        })}
+      </div>
+
       <div className="btn-row">
         <button className="btn accent grow" onClick={() => { tap(); router.push("/anushtanas/japa"); }}>
           Open the counter
@@ -107,10 +169,10 @@ export default function Anushtanas() {
         so. The ledger is append-only, and a record that you changed your mind
         at 22:40 is worth more than a row that quietly disappeared.
         <br /><br />
-        <b>Brahma-yajñam</b> records a portion once its canon is seeded. The
-        corpus and its order differ by śākhā and sampradāya, so it must come
-        from your paramparā rather than from a model — and once seeded,
-        coverage is the one measure here with exact ground truth.
+        The twelve praśnas are recited one a day, in order, wrapping at the
+        end. Because the corpus is finite and ordered, coverage is exactly
+        computable — the one measure in this application with hard ground
+        truth. The cycle above shows when each was last recited.
       </Note>
     </>
   );

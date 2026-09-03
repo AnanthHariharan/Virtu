@@ -50,7 +50,10 @@ export default function Today() {
     (n, e) => n + Number((e.payload as any)?.weight ?? 0) * Number((e.payload as any)?.reps ?? 0), 0
   );
 
-  const eaten = day.filter(e => e.kind === "meal" && (e.payload as any)?.status === "ate").length;
+  const served = day.filter(e => e.kind === "meal" && (e.payload as any)?.status === "ate");
+  const eaten = served.length;
+  const kcal = served.reduce((n, e) => n + Number((e.payload as any)?.kcal ?? 0), 0);
+  const protein = served.reduce((n, e) => n + Number((e.payload as any)?.protein ?? 0), 0);
 
   /* Adherence streak: consecutive days on which every rite was observed. */
   const riteStreak = useMemo(() => {
@@ -156,8 +159,10 @@ export default function Today() {
       {enabled("meals") && meals.length > 0 && (
         <>
           <Section count={`${eaten}/${meals.length}`}>Table</Section>
-          <Row mark="▤" title="The standing menu"
-               meta={eaten ? `${eaten} taken` : "Nothing recorded"}
+          <Row mark="▤" title={eaten ? `${kcal.toLocaleString()} kcal · ${protein} g protein` : "Nothing served yet"}
+               meta={eaten
+                 ? `${eaten} of ${meals.length} bowls`
+                 : meals.map(m => m.name).join(" · ")}
                value="→" href="/meals" />
         </>
       )}

@@ -17,6 +17,9 @@ export interface Payloads {
   /** A completed mala. */
   japa: { mantra: string; count: number; target: number; malas: number };
 
+  /** One brahma-yajñam praśna recited. `index` is its place in the cycle. */
+  portion: { slug: string; name: string; index: number };
+
   /** One working set. `weight: 0` means bodyweight. */
   set: {
     exercise: string; name: string;
@@ -24,8 +27,14 @@ export interface Payloads {
     rpe?: number; session?: string;
   };
 
-  /** A planned meal taken, or dismissed with a cause. */
-  meal: { slug: string; name: string; slot: string; status: "ate" | string; note?: string };
+  /** A sitting taken — with the bowl eaten — or dismissed with a cause. */
+  meal: {
+    slug: string; name: string; slot: string;
+    status: "ate" | string;
+    bowl?: string | null; bowlName?: string | null;
+    kcal?: number; protein?: number;
+    note?: string;
+  };
 
   /** A learning filed under a head, optionally sourced. */
   note: {
@@ -77,7 +86,7 @@ export interface VEvent<K extends EventKind = EventKind> {
 }
 
 export type EntityKind =
-  | "rite" | "exercise" | "session" | "meal" | "head"
+  | "rite" | "portion" | "exercise" | "session" | "meal" | "head"
   | "book" | "project" | "metric";
 
 export interface Entity {

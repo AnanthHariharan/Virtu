@@ -68,12 +68,20 @@ export const MODULES: Module[] = [
   {
     id: "anushtanas", name: "Anuṣṭhānas", short: "Rites", path: "/anushtanas", icon: "rites",
     blurb: "Nitya-karma through the parts of the day, and the japa counter.",
-    owns: ["rite", "japa"], nav: true,
+    owns: ["rite", "japa", "portion"], nav: true,
     describe(e) {
       if (e.kind === "rite") {
         // An un-observing is a correction, not an entry. It belongs in the
         // log but not in the day's reading.
         return p(e).observed ? { title: p(e).name, meta: "Rite", done: true } : null;
+      }
+      if (e.kind === "portion") {
+        return {
+          title: p(e).name,
+          meta: "Brahma-yajñam",
+          value: `${n(p(e).index) + 1}/12`,
+          done: true,
+        };
       }
       return {
         title: `Japa — ${p(e).mantra}`,
@@ -99,14 +107,15 @@ export const MODULES: Module[] = [
 
   {
     id: "meals", name: "Meals", short: "Meals", path: "/meals", icon: "meals",
-    blurb: "A standing menu, confirmed or dismissed with a cause.",
+    blurb: "Two bowls a day, the cooking, and the shopping they add up to.",
     owns: ["meal"], nav: true,
     describe(e) {
       const ate = p(e).status === "ate";
       if (p(e).status === "unset") return null;
       return {
-        title: p(e).name,
+        title: p(e).bowlName ? `${p(e).name} — ${p(e).bowlName}` : p(e).name,
         meta: ate ? p(e).slot : `Dismissed — ${p(e).status}`,
+        value: ate && p(e).kcal ? `${p(e).kcal} kcal` : undefined,
         done: ate,
       };
     },
