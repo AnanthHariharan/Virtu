@@ -89,7 +89,20 @@
 
 html, body { margin: 0; padding: 0; }
 
+/**
+ * The chrome is furniture, not text.
+ *
+ * Long-pressing a navigation tab and getting the iOS copy/share/look-up
+ * callout is the single loudest signal that a page is not an app, so the
+ * default is off — and switched back on for the things that are genuinely
+ * prose, and for every field you type into, where losing selection would
+ * break editing outright.
+ */
 body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
@@ -104,6 +117,13 @@ body {
 }
 
 button, input, textarea, select { font: inherit; color: inherit; letter-spacing: inherit; }
+
+input, textarea, [contenteditable],
+.deck, .lede, .note-t, .recipe-note, .foot-note, .empty, .ing, .cyc .t {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
 button { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4, p, ul, ol { margin: 0; }
@@ -221,6 +241,28 @@ ul, ol { padding: 0; list-style: none; }
   .leaf { padding: 0 28px 96px; margin: 0; }
   .foot { display: none; }
 }
+
+/* A strip under the running head: install, or a waiting update. One line,
+   one rule, and gone the moment it stops being true. */
+.strip {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px var(--pad);
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-2);
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.11em; color: var(--ink-2);
+}
+.strip span { flex: 1; min-width: 0; }
+.strip button {
+  min-height: 30px; padding: 0 10px;
+  border: 1px solid var(--ink); color: var(--ink);
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.11em;
+  white-space: nowrap;
+}
+.strip button:hover { background: var(--ink); color: var(--paper); }
+.strip button.x { border: 0; padding: 0 4px; color: var(--ink-3); font-size: 12px; }
+@media (min-width: 900px) { .strip { padding-left: 28px; padding-right: 28px; } }
 
 /* ══ typography ═════════════════════════════════════════════════════ */
 
@@ -478,11 +520,14 @@ button.row:active { background: var(--paper-3); }
 @keyframes fade { from { opacity: 0 } }
 
 .sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
+  position: fixed; left: 0; right: 0; z-index: 91;
+  /* --kb is the on-screen keyboard's height, set by the Sheet component from
+     the gap between the layout and visual viewports. Zero when it is closed. */
+  bottom: var(--kb, 0px);
   background: var(--paper);
   border-top: 1px solid var(--ink);
   padding: 0 var(--pad) calc(var(--safe-b) + 22px);
-  max-height: 88dvh; overflow-y: auto;
+  max-height: calc(88dvh - var(--kb, 0px)); overflow-y: auto;
   animation: rise .2s cubic-bezier(.2,.7,.3,1);
 }
 @keyframes rise { from { transform: translateY(100%) } }
@@ -491,6 +536,7 @@ button.row:active { background: var(--paper-3); }
   .sheet {
     left: 50%; right: auto; bottom: auto; top: 50%;
     transform: translate(-50%, -50%);
+    max-height: 88dvh;
     width: min(520px, calc(100vw - 48px));
     border: 1px solid var(--ink);
     animation: pop .16s cubic-bezier(.2,.7,.3,1);

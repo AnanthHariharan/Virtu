@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Glyph from "./Glyph";
+import Banners from "./Banners";
 import { Sheet, Field, Text } from "./ui";
 import { MODULES, moduleForPath } from "@/modules/registry";
 import { startSync, pendingCount, subscribe, log } from "@/lib/ledger";
@@ -49,6 +50,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
     // Seed the local store from src/data, then start draining the queue.
     void seed().then(() => { setReady(true); stop = startSync(); refresh(); });
+
+    // Ask the browser to keep our data. An installed app is usually granted
+    // this outright, but asking is what makes it durable elsewhere — and the
+    // ledger is the one thing here that cannot be reconstructed.
+    void navigator.storage?.persisted?.()
+      .then(ok => { if (!ok) return navigator.storage.persist?.(); })
+      .catch(() => {});
 
     // Only in production. In development the worker's cache-first rule for
     // static assets serves stale chunks and quietly breaks Fast Refresh.
@@ -107,6 +115,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <span>{date}</span>
           </span>
         </header>
+
+        <Banners />
 
         <main className="leaf">{ready && modsReady ? children : null}</main>
       </div>

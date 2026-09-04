@@ -127,9 +127,31 @@ export function Sheet({ title, open, onClose, children }: {
     );
     first?.focus();
 
+    /**
+     * Lift the sheet clear of the on-screen keyboard.
+     *
+     * iOS does not shrink the layout viewport when the keyboard opens — only
+     * the visual viewport moves — so a `position: fixed; bottom: 0` sheet ends
+     * up underneath it, with the field you are typing into out of sight. The
+     * gap between the two viewports IS the keyboard, and `--kb` carries it
+     * into the stylesheet.
+     */
+    const vv = window.visualViewport;
+    const sync = () => {
+      if (!vv) return;
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty("--kb", `${Math.round(inset)}px`);
+    };
+    sync();
+    vv?.addEventListener("resize", sync);
+    vv?.addEventListener("scroll", sync);
+
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
+      vv?.removeEventListener("resize", sync);
+      vv?.removeEventListener("scroll", sync);
+      document.documentElement.style.removeProperty("--kb");
       (opener.current as HTMLElement | null)?.focus?.();
     };
   }, [open, onClose]);
