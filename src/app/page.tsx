@@ -5,6 +5,7 @@ import { Display, Section, Row, Figures, Fig, Empty, Note } from "@/components/u
 import { useDay, useEntities, useModules, useAll } from "@/hooks/useLedger";
 import { MODULES, moduleOwning } from "@/modules/registry";
 import { sessionFor } from "@/data/program";
+import { duration } from "@/data/activities";
 import { SLOTS, slotFor, greeting, longDate, clock, streak } from "@/lib/time";
 import { UNIT } from "@/data/program";
 
@@ -46,6 +47,8 @@ export default function Today() {
   });
 
   const sets = day.filter(e => e.kind === "set");
+  const activity = day.filter(e => e.kind === "activity");
+  const activeMinutes = activity.reduce((n, e) => n + Number((e.payload as any)?.minutes ?? 0), 0);
   const volume = sets.reduce(
     (n, e) => n + Number((e.payload as any)?.weight ?? 0) * Number((e.payload as any)?.reps ?? 0), 0
   );
@@ -103,8 +106,14 @@ export default function Today() {
               ? <><b>{observed.size} of {rites.length}</b> rites stand recorded</>
               : "No rites are set"}
             {sets.length
-              ? <>, and <b>{sets.length} {sets.length === 1 ? "set" : "sets"}</b> at {volume.toLocaleString()} {UNIT} of volume.</>
-              : session ? <>, and <b>{session.name}</b> is unopened.</> : <>, and the body rests.</>}
+              ? <>, and <b>{sets.length} {sets.length === 1 ? "set" : "sets"}</b> at {volume.toLocaleString()} {UNIT} of volume</>
+              : session ? <>, and <b>{session.name}</b> is unopened</>
+              : activeMinutes ? <></> : <>, and the body rests</>}
+            {activeMinutes
+              ? <>, with <b>{duration(activeMinutes)}</b> of{" "}
+                  {[...new Set(activity.map(e => String((e.payload as any)?.name ?? "").toLowerCase()))]
+                    .join(" and ")}.</>
+              : "."}
           </>
         }
       >
@@ -113,9 +122,10 @@ export default function Today() {
       </Display>
 
       <div style={{ marginTop: 28 }}>
-        <Figures cols={3}>
+        <Figures cols={activeMinutes ? 4 : 3}>
           <Fig value={`${observed.size}/${rites.length || "—"}`} label="Rites" />
           <Fig value={volume ? volume.toLocaleString() : "0"} unit={UNIT} label="Volume" />
+          {activeMinutes > 0 && <Fig value={activeMinutes} unit="min" label="Active" hot />}
           <Fig value={riteStreak} unit="d" label="Streak" hot={riteStreak >= 7} />
         </Figures>
       </div>

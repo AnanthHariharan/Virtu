@@ -52,6 +52,7 @@ Everything you will actually want to change is plain typed data in
 |---|---|
 | `anushtanas.ts` | The nitya-karma, and the twelve brahma-yajñam praśnas |
 | `program.ts` | The training split — sessions, movements, schemes, loads |
+| `activities.ts` | Sport and running — cricket, rugby, vinyasa, running |
 | `menu.ts` | The five bowls, the item catalogue, and the aisles |
 | `heads.ts` | Commonplace heads, and the measures kept |
 
@@ -70,6 +71,16 @@ praśna, and you resume where you stopped instead of where the calendar thinks
 you ought to be. Because the corpus is finite and ordered, coverage is exactly
 computable, which makes it the only measure in the application with hard
 ground truth.
+
+**Activity is time, not load.** Cricket, rugby, vinyasa and running live in
+`activities.ts` and log against a separate event kind, because they do not fit
+the sets-and-reps model and forcing them into it would mean inventing a
+working weight for an hour of rugby — which would then corrupt every volume
+figure on the page. What they all share is minutes, so minutes are the one
+quantity every activity records; distance is optional and only running asks
+for it. Each declares its own `modes`, because a match is not an hour in the
+nets and a long run is not a set of intervals. Adding a fifth sport is one
+entry in that file.
 
 **Loads.** `UNIT` in `program.ts` is one constant, currently `"lb"`. It labels
 barbell and dumbbell figures only; machine stacks are numbered on their own

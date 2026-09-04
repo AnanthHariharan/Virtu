@@ -27,6 +27,15 @@ export interface Payloads {
     rpe?: number; session?: string;
   };
 
+  /** Physical activity that is not lifting. Minutes are the one constant. */
+  activity: {
+    activity: string; name: string;
+    minutes: number;
+    mode?: string;
+    distance?: number; distanceUnit?: string;
+    note?: string;
+  };
+
   /** A sitting taken — with the bowl eaten — or dismissed with a cause. */
   meal: {
     slug: string; name: string; slot: string;

@@ -126,7 +126,13 @@ Taptic Engine. If it stops working the fallbacks are a Bluetooth clicker
 (already supported — the japa counter listens for space and arrow keys) or a
 Capacitor wrap, which would reuse this entire codebase.
 
-## Two data rules that are not obvious
+## Three data rules that are not obvious
+
+**Activity is measured in time.** Sport and running use the `activity` kind,
+never `set`. They have no working load, and inventing one to fit the sets model
+would put fictional weight into every volume total. Minutes are the shared
+quantity; distance is optional. Do not compute a one-rep maximum or a volume
+load for anything with `time`.
 
 **The praśna cycle is relative, not calendrical.** The brahma-yajñam praśna due
 today is the one after the last *recorded*, wrapping at the end of PORTIONS —

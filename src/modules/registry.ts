@@ -93,9 +93,18 @@ export const MODULES: Module[] = [
 
   {
     id: "train", name: "Training", short: "Train", path: "/train", icon: "train",
-    blurb: "Sessions, sets, volume load and the record.",
-    owns: ["set"], nav: true,
+    blurb: "Sessions, sets and volume load — and the sport played away from them.",
+    owns: ["set", "activity"], nav: true,
     describe(e) {
+      if (e.kind === "activity") {
+        const d = n(p(e).distance);
+        return {
+          title: p(e).name,
+          meta: [p(e).mode, d ? `${d} ${p(e).distanceUnit}` : null]
+            .filter(Boolean).join(" · ") || "Activity",
+          value: `${n(p(e).minutes)}′`,
+        };
+      }
       const w = n(p(e).weight);
       return {
         title: p(e).name,
