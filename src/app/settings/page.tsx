@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Display, Section, Note, Field, Text, Figures, Fig } from "@/components/ui";
+import { Display, Section, Note, Field, Text, Figures, Fig, Switch, Row } from "@/components/ui";
 import { exportAll, flush, pull, pendingCount, subscribe } from "@/lib/ledger";
 import { hasRemote } from "@/lib/supabase";
 import { sendMagicLink, signOut, useAccount } from "@/lib/auth";
 import { tap } from "@/lib/haptics";
+import { jevEnabled, setJevEnabled } from "@/lib/judge";
 
 /**
  * The book itself: whose it is, where it is kept, and how to take it away.
@@ -17,6 +18,15 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [jev, setJev] = useState(false);
+
+  useEffect(() => { void jevEnabled().then(setJev); }, []);
+
+  async function toggleJev() {
+    const next = !jev;
+    setJev(next);
+    await setJevEnabled(next);
+  }
 
   useEffect(() => {
     const refresh = () => { void pendingCount().then(setPending); };
@@ -114,6 +124,21 @@ export default function Settings() {
           </>
         )
       )}
+
+      <Section sub>Triage</Section>
+      <div className="row">
+        <span className="mk" aria-hidden="true">◇</span>
+        <span className="bd">
+          <span className="t">Sort captures with Jev</span>
+          <span className="m">
+            Sends each capture&rsquo;s text — and nothing else from the ledger
+            but the names of your heads, books, lifts and projects — to TypeSafe
+          </span>
+        </span>
+        <Switch on={jev} label="Sort captures with Jev" onToggle={toggleJev} />
+      </div>
+      {jev && <Row mark="→" title="Open the inbox" meta="What Jev filed, offered, and left for you"
+                   value="→" href="/inbox" />}
 
       <Section sub>The book itself</Section>
       <div className="row">

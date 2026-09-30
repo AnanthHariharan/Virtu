@@ -32,6 +32,15 @@ sign-in link; until you are signed in, `auth.uid()` is null and nothing can be
 pushed. The client mints `client_id` before every write, so a queue that
 pushes twice after a flaky connection lands once.
 
+### Triage with Jev, when you want it
+
+Set `TYPESAFE_API_KEY` in `.env.local` (server-side; never `NEXT_PUBLIC_`),
+then switch **Sort captures with Jev** on in Settings. Each capture is sent
+once, as its text alone, and comes back as typed answers. A note Jev is sure
+of is filed under its head; a set, a measure, a run or pages read is only
+*offered* in the Inbox, with its figures on steppers. Every accept and refusal
+is written as a verdict — the labels that will tune the thresholds.
+
 ### Tests
 
 ```bash
@@ -112,10 +121,14 @@ the household measures beside them are hints and are never used in arithmetic.
 src/data/            the plan — rites, programme, menu, heads. Edit these.
 src/core/            pure, shared logic: schemas, corrections, rite state
   schema.ts          the schema of every event kind, in one place (Zod)
+  triage.ts          Jev's questions for a capture, and the rules that decide
+  inbox.ts           the inbox, folded from captures, judgments and verdicts
 src/lib/
   types.ts           Payloads, inferred from core/schema
   ledger.ts          THE write path. log(), corrections, the sync loop, export
   remote.ts          everything the sync loop asks of the server
+  judge.ts           the triage runner, and accept / refuse / undo
+  jev-server.ts      the only code that talks to Jev (server-side)
   db.ts              a small IndexedDB wrapper, no dependency
   seed.ts            src/data → entity rows, versioned per collection
   haptics.ts         iOS haptics via the switch trick, and the bell

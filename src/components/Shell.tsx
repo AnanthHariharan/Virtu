@@ -9,6 +9,7 @@ import { Sheet, Field, Text } from "./ui";
 import { MODULES, moduleForPath } from "@/modules/registry";
 import { startSync, pendingCount, subscribe, log } from "@/lib/ledger";
 import { seed } from "@/lib/seed";
+import { startJudging } from "@/lib/judge";
 import { useModules } from "@/hooks/useLedger";
 import { stamp } from "@/lib/time";
 import { tap } from "@/lib/haptics";
@@ -49,7 +50,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const un = subscribe(refresh);
 
     // Seed the local store from src/data, then start draining the queue.
-    void seed().then(() => { setReady(true); stop = startSync(); refresh(); });
+    // Triage runs on the same moments, and only once switched on in Settings.
+    void seed().then(() => {
+      setReady(true);
+      const a = startSync(), b = startJudging();
+      stop = () => { a(); b(); };
+      refresh();
+    });
 
     // Ask the browser to keep our data. An installed app is usually granted
     // this outright, but asking is what makes it durable elsewhere — and the

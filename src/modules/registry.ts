@@ -190,6 +190,16 @@ export const MODULES: Module[] = [
       return { title: p(e).name, meta: "Measure", value: `${p(e).value} ${p(e).unit}` };
     },
   },
+
+  {
+    id: "inbox", name: "Inbox", short: "Inbox", path: "/inbox", icon: "notes",
+    blurb: "Captures sorted by Jev: filed, offered, or left for you.",
+    owns: ["judgment", "verdict"],
+    // A judgment and a verdict are about entries, not entries, so neither
+    // reads in the day. What they produce — a note filed, a set accepted —
+    // is an ordinary event and reads as one.
+    describe: () => null,
+  },
 ];
 
 export const MODULE_BY_ID = new Map(MODULES.map(m => [m.id, m]));

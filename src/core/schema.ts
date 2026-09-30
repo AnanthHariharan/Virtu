@@ -22,6 +22,28 @@ export const Slot = z.enum(SLOTS);
 
 const text = z.string();
 const count = z.number().finite().nonnegative();
+const prob = z.number().min(0).max(1);
+
+/**
+ * One typed answer from a System One model, as stored. The Score legend is
+ * dropped: it repeats the question, which is versioned in code.
+ */
+export const Answer = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("choice"), choice: text, confidence: prob, probabilities: z.record(text, prob) }).strict(),
+  z.object({ type: z.literal("score"), score: z.number(), confidence: prob, probabilities: z.record(text, prob) }).strict(),
+  z.object({ type: z.literal("noul"), noul: prob }).strict(),
+]);
+export type Answer = z.infer<typeof Answer>;
+
+/** An entry a model proposes. `complete` is false when a required figure is missing. */
+export const Proposal = z.object({
+  kind: text,
+  payload: z.record(text, z.unknown()),
+  confidence: prob,
+  complete: z.boolean(),
+  missing: z.array(text),
+}).strict();
+export type Proposal = z.infer<typeof Proposal>;
 
 export const SCHEMAS = {
   /** An anushtana observed (or explicitly un-observed — the log is append-only). */
@@ -87,6 +109,33 @@ export const SCHEMAS = {
 
   /** Free text awaiting structure. The only kind with no schema by design. */
   capture: z.object({ text }).strict(),
+
+  /**
+   * What a model made of an entry — never the entry itself. Jev's typed
+   * answers, the model version that gave them, the proposal code built from
+   * them, and what was done: filed automatically, offered, or left alone.
+   * Keeping it as an event makes every automatic decision auditable and
+   * replayable against a newer model.
+   */
+  judgment: z.object({
+    target: text,
+    task: text,
+    model: text,
+    answers: z.record(text, Answer),
+    proposal: Proposal.nullable(),
+    action: z.enum(["auto", "suggest", "leave"]),
+  }).strict(),
+
+  /**
+   * Your answer to a judgment: accepted (and what it wrote) or rejected.
+   * These are the labels — the eval set accumulates as a side effect of use.
+   */
+  verdict: z.object({
+    judgment: text,
+    target: text,
+    accepted: z.boolean(),
+    wrote: text.optional(),
+  }).strict(),
 } as const;
 
 export type Payloads = { [K in keyof typeof SCHEMAS]: z.infer<(typeof SCHEMAS)[K]> };
