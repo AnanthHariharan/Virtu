@@ -7,6 +7,7 @@ import { useEntities, useKind } from "@/hooks/useLedger";
 import { log } from "@/lib/ledger";
 import { tap } from "@/lib/haptics";
 import { unfiledCaptures, captureText } from "@/core/commonplace";
+import { acceptedTargets } from "@/core/inbox";
 
 /**
  * The commonplace book.
@@ -24,6 +25,7 @@ export default function Commonplace() {
   const books = useEntities("book");
   const notes = useKind("note");
   const captures = useKind("capture");
+  const verdicts = useKind("verdict");
 
   const [head, setHead] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -61,7 +63,9 @@ export default function Commonplace() {
   }
 
   // Filed by link, so rewording a capture on its way in still files it.
-  const unfiled = useMemo(() => unfiledCaptures(captures, notes), [captures, notes]);
+  // A capture accepted from the inbox as a set or a measure is filed too.
+  const unfiled = useMemo(
+    () => unfiledCaptures(captures, notes, acceptedTargets(verdicts)), [captures, notes, verdicts]);
 
   return (
     <>

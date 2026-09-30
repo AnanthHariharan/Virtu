@@ -173,9 +173,31 @@ field is display only; never do arithmetic with it. A prepared mix declares
 `parts` so the recipe keeps it whole while the grocery list expands it into
 what can go in a basket.
 
+## Models judge; they never write
+
+Jev (TypeSafe's System One model) triages captures. The rules are in
+`src/core/triage.ts`, and they are the design, not an implementation detail:
+
+- **A judgment is an event.** `judgment` stores the typed answers, the
+  *versioned* model id, the proposal code built from them, and the action
+  taken. `verdict` stores your accept or refusal. Never act on a model's
+  answer without writing the judgment that justified it.
+- **Code decides, from typed answers.** Jev answers narrow Choice / Score /
+  Noul questions, all asked in one request. `decideTriage()` composes them,
+  and the thresholds live in `GATES`. Do not add a question that asks the
+  model to decide the outcome; ask about one property and decide in code.
+- **Numbers are never generated.** Candidates are found by regex; the model
+  only chooses which one is the weight. Every figure written is one you typed.
+- **Only a note may be filed unasked.** Anything that moves a figure (a set, a
+  measure, minutes, pages) is offered in a Sheet and written only on accept,
+  through `logUntrusted()`. A plan ("squat 100 next week") is left alone.
+- **The key stays on the server.** `/api/judge` takes a named task, not a
+  prompt, and builds the questions itself; it is not a proxy. Its gate is a
+  Supabase session, or development only.
+- **Off by default.** Triage sends capture text to a third party, so it runs
+  only once switched on in Settings. Send the least state a judgment needs.
+
 ## Not yet built
 
 - **The MCP server.** The ledger as a queryable surface, with agent writes
-  going through the same `log()` as everything else.
-- **Extraction.** `capture` events are stored raw and unstructured. Wire them
-  to a model only once there are enough of them to be an eval set.
+  going through `logUntrusted()` like everything else.

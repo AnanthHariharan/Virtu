@@ -15,10 +15,18 @@ describe("the registry", () => {
     for (const m of MODULES) for (const k of m.owns) expect(EVENT_KINDS).toContain(k);
   });
 
-  it.each(EVENT_KINDS)("describes a %s as a line with a title", kind => {
+  // Judgments and verdicts are about entries, not entries.
+  const SILENT = new Set(["judgment", "verdict"]);
+
+  it.each(EVENT_KINDS.filter(k => !SILENT.has(k)))("describes a %s as a line with a title", kind => {
     const line = moduleOwning(kind)!.describe(ev(kind, SAMPLES[kind]));
     expect(line).not.toBeNull();
     expect(line!.title).toBeTruthy();
+  });
+
+  it.each([...SILENT])("keeps a %s out of the day's reading", kind => {
+    const k = kind as "judgment" | "verdict";
+    expect(moduleOwning(k)!.describe(ev(k, SAMPLES[k]))).toBeNull();
   });
 
   it("an un-observed rite is kept out of the day's reading", () => {
