@@ -197,6 +197,18 @@ Jev (TypeSafe's System One model) triages captures. The rules are in
 - **Off by default.** Triage sends capture text to a third party, so it runs
   only once switched on in Settings. Send the least state a judgment needs.
 
+## Thresholds are measured, not guessed
+
+`src/core/lab.ts` turns verdicts into labels. A proposal is right if it was
+accepted exactly as proposed (or a note kept as filed); an amended figure, a
+refiled head, an undo or a refusal count against it, and each field is scored
+by whether what was finally written kept it — so a verdict's `wrote` must name
+the event that now stands (a refile names the correction, not the original).
+`/lab` shows the reliability table and calibration error, sweeps the note
+threshold, and replays stored judgments under new gates before any are
+applied. Tuned gates live in meta `lab:gates`, merged over `GATES` by
+`mergeGates()`, and apply only to captures judged afterwards.
+
 ## Accountability is arithmetic
 
 `threads()` in `src/core/account.ts` computes what is owed — rites past their

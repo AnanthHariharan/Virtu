@@ -3,7 +3,7 @@
 import { entities, eventsOfKind, log, logUntrusted, correct, strike, subscribe } from "./ledger";
 import { getMeta, setMeta } from "./db";
 import { supabase } from "./supabase";
-import { decideTriage, numberCandidates, type TriageContext } from "@/core/triage";
+import { decideTriage, numberCandidates, mergeGates, type Gates, type TriageContext } from "@/core/triage";
 import { buildInbox, type Judgment } from "@/core/inbox";
 import { captureText } from "@/core/commonplace";
 import { ACTIVITIES, DISTANCE_UNIT } from "@/data/activities";
@@ -22,6 +22,11 @@ import type { VEvent, Payload } from "./types";
  */
 
 export const JEV_KEY = "jev:on";
+export const GATES_KEY = "lab:gates";
+
+/** The gates in force: the defaults in core, with any tuned in the lab. */
+export const currentGates = async (): Promise<Gates> => mergeGates(await getMeta<unknown>(GATES_KEY, null));
+export const setGates = (g: Gates | null) => setMeta(GATES_KEY, g);
 
 export const jevEnabled = () => getMeta<boolean>(JEV_KEY, false);
 export async function setJevEnabled(on: boolean) {
@@ -93,6 +98,7 @@ export async function judgePending(opts: { fetch?: typeof fetch; limit?: number 
     if (!todo.length && !lines.length) return 0;
 
     const context = await triageContext();
+    const gates = await currentGates();
     const headers = { "content-type": "application/json", ...(await authHeader()) };
     let n = 0;
     let stop = false;
@@ -125,7 +131,7 @@ export async function judgePending(opts: { fetch?: typeof fetch; limit?: number 
       const got = await ask({ task: "triage", text, context });
       if (!got) break;
       const { model, answers } = got;
-      const d = decideTriage({ client_id: capture.client_id, text }, context, numberCandidates(text), answers);
+      const d = decideTriage({ client_id: capture.client_id, text }, context, numberCandidates(text), answers, gates);
       await log("judgment", {
         target: capture.client_id, task: "triage", model, answers,
         proposal: d.proposal, action: d.action,
@@ -181,9 +187,11 @@ export async function keep(j: VEvent<"judgment">, note: VEvent<"note">) {
 
 /** Refile an auto-filed note under a different head, keeping it filed. */
 export async function refile(j: VEvent<"judgment">, note: VEvent<"note">, head: { slug: string; name: string }) {
-  await correct(note, { ...(note.payload as Payload<"note">), head: head.slug, headName: head.name });
+  const fixed = await correct(note, { ...(note.payload as Payload<"note">), head: head.slug, headName: head.name });
+  // `wrote` names the correction — what now stands — so the lab can see
+  // that the head was the part Jev got wrong.
   await log("verdict", {
-    judgment: j.client_id, target: j.payload!.target, accepted: false, wrote: note.client_id,
+    judgment: j.client_id, target: j.payload!.target, accepted: false, wrote: fixed.client_id,
   });
 }
 

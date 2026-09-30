@@ -205,6 +205,14 @@ export const MODULES: Module[] = [
   },
 
   {
+    id: "lab", name: "Lab", short: "Lab", path: "/lab", icon: "measures",
+    blurb: "How far to trust Jev, measured against your verdicts.",
+    // Reads judgments and verdicts; owns nothing of its own.
+    owns: [],
+    describe: () => null,
+  },
+
+  {
     id: "inbox", name: "Inbox", short: "Inbox", path: "/inbox", icon: "notes",
     blurb: "Captures sorted by Jev: filed, offered, or left for you.",
     owns: ["judgment", "verdict"],

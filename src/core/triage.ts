@@ -251,7 +251,23 @@ export const GATES = {
   happened: 0.3,
 };
 
-/** Kinds that move a figure — records, volume, trends — and so are never filed unasked. */
+export type Gates = typeof GATES;
+
+/**
+ * Gates as tuned in the lab, over the defaults above. Anything missing or
+ * out of range falls back, so a bad override can never silence triage.
+ */
+export function mergeGates(over: unknown): Gates {
+  const o = (over ?? {}) as Partial<{ floor: unknown; field: unknown; happened: unknown; autoNote: Partial<Record<"kind" | "head", unknown>> }>;
+  const p = (v: unknown, d: number) => typeof v === "number" && v >= 0 && v <= 1 ? v : d;
+  return {
+    floor: p(o.floor, GATES.floor),
+    field: p(o.field, GATES.field),
+    happened: p(o.happened, GATES.happened),
+    autoNote: { kind: p(o.autoNote?.kind, GATES.autoNote.kind), head: p(o.autoNote?.head, GATES.autoNote.head) },
+  };
+}
+
 const FIGURE_KINDS = new Set(["set", "activity", "measure", "read"]);
 
 type Answers = Record<string, Answer | undefined>;
@@ -276,14 +292,16 @@ export function decideTriage(
   ctx: TriageContext,
   candidates: Candidate[],
   answers: Answers,
+  gates: Gates = GATES,
 ): Decision {
   const kindA = answers.kind;
-  if (!kindA || kindA.type !== "choice" || kindA.confidence < GATES.floor || kindA.choice === "other") {
+  if (!kindA || kindA.type !== "choice" || kindA.confidence < gates.floor || kindA.choice === "other") {
     return { proposal: null, action: "leave" };
   }
   const kind = kindA.choice;
+  const pickOf = (a: Answer | undefined) => chosen(a, gates.field);
   const num = (q: string) => {
-    const k = chosen(answers[q]);
+    const k = pickOf(answers[q]);
     return k ? candidates.find(c => c.key === k) ?? null : null;
   };
   const used: (Answer | undefined)[] = [kindA];
@@ -298,8 +316,8 @@ export function decideTriage(
 
   switch (kind) {
     case "note": {
-      const head = ctx.heads.find(h => h.slug === chosen(answers.head));
-      const book = ctx.books.find(b => b.slug === chosen(answers.book));
+      const head = ctx.heads.find(h => h.slug === pickOf(answers.head));
+      const book = ctx.books.find(b => b.slug === pickOf(answers.book));
       if (head) used.push(answers.head);
       payload = {
         text: capture.text,
@@ -310,14 +328,14 @@ export function decideTriage(
       break;
     }
     case "task": {
-      const k = chosen(answers.project);
+      const k = pickOf(answers.project);
       const project = k && k.startsWith("p") ? ctx.projects[Number(k.slice(1))] : undefined;
       if (project) used.push(answers.project);
       payload = { project: project ?? "Unsorted", step: capture.text, done: false };
       break;
     }
     case "set": {
-      const ex = need(ctx.exercises.find(e => e.slug === chosen(answers.exercise)), "exercise", answers.exercise);
+      const ex = need(ctx.exercises.find(e => e.slug === pickOf(answers.exercise)), "exercise", answers.exercise);
       const reps = need(num("reps"), "reps", answers.reps);
       const w = num("weight");
       if (w) used.push(answers.weight);
@@ -330,7 +348,7 @@ export function decideTriage(
       break;
     }
     case "activity": {
-      const a = need(ctx.activities.find(x => x.slug === chosen(answers.activity)), "activity", answers.activity);
+      const a = need(ctx.activities.find(x => x.slug === pickOf(answers.activity)), "activity", answers.activity);
       const m = need(num("minutes"), "minutes", answers.minutes);
       const d = num("distance");
       payload = {
@@ -341,13 +359,13 @@ export function decideTriage(
       break;
     }
     case "measure": {
-      const m = need(ctx.metrics.find(x => x.slug === chosen(answers.metric)), "metric", answers.metric);
+      const m = need(ctx.metrics.find(x => x.slug === pickOf(answers.metric)), "metric", answers.metric);
       const v = need(num("value"), "value", answers.value);
       payload = { metric: m?.slug, name: m?.name, value: v?.value, unit: m?.unit };
       break;
     }
     case "read": {
-      const b = need(ctx.books.find(x => x.slug === chosen(answers.book)), "book", answers.book);
+      const b = need(ctx.books.find(x => x.slug === pickOf(answers.book)), "book", answers.book);
       const from = need(num("from"), "from", answers.from);
       const to = need(num("to"), "to", answers.to);
       payload = { book: b?.slug, name: b?.name, from: from?.value, to: to?.value };
@@ -363,20 +381,30 @@ export function decideTriage(
   const confidence = Math.min(...used.map(conf));
 
   const proposal: Proposal = { kind, payload, confidence, complete, missing };
+  return { proposal, action: gateAction(proposal, answers, gates) };
+}
+
+/**
+ * What to do with a proposal, given the answers it came from. Separate from
+ * building the proposal so the lab can replay stored judgments under other
+ * gates without the context that built them.
+ */
+export function gateAction(proposal: Proposal, answers: Answers, gates: Gates = GATES): Decision["action"] {
+  const kindA = answers.kind;
+  if (!kindA || kindA.type !== "choice" || kindA.confidence < gates.floor || kindA.choice === "other") return "leave";
 
   // A plan is not a set: "squat 100 next week" must not be offered as one.
   // Figures are only ever offered for what has already happened.
   const happened = answers.happened?.type === "noul" ? answers.happened.noul : undefined;
-  if (happened !== undefined && FIGURE_KINDS.has(kind) && happened < GATES.happened) {
-    return { proposal, action: "leave" };
-  }
+  if (happened !== undefined && FIGURE_KINDS.has(proposal.kind) && happened < gates.happened) return "leave";
 
-  if (kind === "note" && complete
-      && kindA.confidence >= GATES.autoNote.kind
-      && payload.head && answers.head?.type === "choice" && answers.head.confidence >= GATES.autoNote.head) {
-    return { proposal, action: "auto" };
+  const head = answers.head;
+  if (proposal.kind === "note" && proposal.complete
+      && kindA.confidence >= gates.autoNote.kind
+      && proposal.payload.head && head?.type === "choice" && head.confidence >= gates.autoNote.head) {
+    return "auto";
   }
-  return { proposal, action: "suggest" };
+  return "suggest";
 }
 
 /** Strip an API answer to the stored shape (drops the Score legend). */

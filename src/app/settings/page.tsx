@@ -139,6 +139,8 @@ export default function Settings() {
       </div>
       {jev && <Row mark="→" title="Open the inbox" meta="What Jev filed, offered, and left for you"
                    value="→" href="/inbox" />}
+      {jev && <Row mark="→" title="Open the lab" meta="How far to trust Jev, and the gates it answers to"
+                   value="→" href="/lab" />}
 
       <Section sub>The book itself</Section>
       <div className="row">
