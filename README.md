@@ -26,9 +26,17 @@ a database before you have data worth losing, not before.
 cp .env.example .env.local     # fill in your Supabase URL and anon key
 ```
 
-Then, in the Supabase SQL editor, run `supabase/migrations/0001_init.sql`. Sign
-in once so `auth.uid()` resolves. The client mints `client_id` before every
-write, so a queue that pushes twice after a flaky connection lands once.
+Then, in the Supabase SQL editor, run the migrations in `supabase/migrations`
+in order. Open **Modules → Sync and account** (`/settings`) and send yourself a
+sign-in link; until you are signed in, `auth.uid()` is null and nothing can be
+pushed. The client mints `client_id` before every write, so a queue that
+pushes twice after a flaky connection lands once.
+
+### Tests
+
+```bash
+npm test
+```
 
 ### On your phone
 
@@ -102,9 +110,12 @@ the household measures beside them are hints and are never used in arithmetic.
 
 ```
 src/data/            the plan — rites, programme, menu, heads. Edit these.
+src/core/            pure, shared logic: schemas, corrections, rite state
+  schema.ts          the schema of every event kind, in one place (Zod)
 src/lib/
-  types.ts           Payloads: the schema of every event kind, in one place
-  ledger.ts          THE write path. log(), the sync loop, export
+  types.ts           Payloads, inferred from core/schema
+  ledger.ts          THE write path. log(), corrections, the sync loop, export
+  remote.ts          everything the sync loop asks of the server
   db.ts              a small IndexedDB wrapper, no dependency
   seed.ts            src/data → entity rows, versioned per collection
   haptics.ts         iOS haptics via the switch trick, and the bell

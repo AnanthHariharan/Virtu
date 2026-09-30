@@ -6,6 +6,7 @@ import { Display, Section, Note, Sheet, Field, Text, Chips, Empty, Figures, Fig 
 import { useEntities, useKind } from "@/hooks/useLedger";
 import { log } from "@/lib/ledger";
 import { tap } from "@/lib/haptics";
+import { unfiledCaptures, captureText } from "@/core/commonplace";
 
 /**
  * The commonplace book.
@@ -29,7 +30,7 @@ export default function Commonplace() {
   const [text, setText] = useState("");
   const [pickHead, setPickHead] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
-  const [filing, setFiling] = useState<string | null>(null);   // a capture being filed
+  const [filing, setFiling] = useState<string | null>(null);   // client_id of a capture being filed
 
   const shown = useMemo(
     () => (head ? notes.filter(e => e.payload?.head === head) : notes),
@@ -46,22 +47,21 @@ export default function Commonplace() {
       text: t,
       head: h?.slug ?? null, headName: h?.name ?? null,
       source: b?.slug ?? null, sourceName: b?.name ?? null,
+      ...(filing ? { files: filing } : {}),
     });
     setText(""); setSource(null); setFiling(null); setOpen(false);
   }
 
-  function compose(seed?: string) {
+  function compose(seed?: { text: string; capture: string }) {
     tap();
-    setText(seed ?? "");
-    setFiling(seed ?? null);
+    setText(seed?.text ?? "");
+    setFiling(seed?.capture ?? null);
     setPickHead(head ?? heads[0]?.slug ?? null);
     setOpen(true);
   }
 
-  const unfiled = captures.filter(c => {
-    const t = (c.payload?.text ?? c.raw ?? "").trim();
-    return t && !notes.some(n => n.payload?.text.trim() === t);
-  });
+  // Filed by link, so rewording a capture on its way in still files it.
+  const unfiled = useMemo(() => unfiledCaptures(captures, notes), [captures, notes]);
 
   return (
     <>
@@ -81,7 +81,7 @@ export default function Commonplace() {
         <>
           <Section count={`${unfiled.length}`}>Awaiting a head</Section>
           {unfiled.map(c => (
-            <button className="row" key={c.client_id} onClick={() => compose(c.payload?.text ?? c.raw ?? "")}>
+            <button className="row" key={c.client_id} onClick={() => compose({ text: captureText(c), capture: c.client_id })}>
               <span className="mk on" aria-hidden="true">○</span>
               <span className="bd">
                 <span className="t">{c.payload?.text ?? c.raw}</span>

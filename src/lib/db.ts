@@ -88,6 +88,10 @@ export const db = {
   async del(store: Store, key: IDBValidKey): Promise<void> {
     await tx(store, "readwrite", s => s.delete(key) as unknown as IDBRequest<undefined>);
   },
+
+  async clear(store: Store): Promise<void> {
+    await tx(store, "readwrite", s => s.clear() as unknown as IDBRequest<undefined>);
+  },
 };
 
 /**

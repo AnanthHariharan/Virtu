@@ -6,7 +6,7 @@ import {
   Stepper, Segmented, Chips, Empty, Spark,
 } from "@/components/ui";
 import { useDay, useEntities, useKind } from "@/hooks/useLedger";
-import { log, patchState } from "@/lib/ledger";
+import { log, patchState, correct, strike } from "@/lib/ledger";
 import { PROGRAM, sessionFor, UNIT, repLabel, repTarget, type Movement } from "@/data/program";
 import { ACTIVITIES, DISTANCE_UNIT, duration, type Activity } from "@/data/activities";
 import { DAYS, e1rm } from "@/lib/time";
@@ -35,6 +35,11 @@ export default function Train() {
   const [logging, setLogging] = useState<Movement | null>(null);
   const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(0);
+
+  /* correcting a set already logged — a new event, never an edit */
+  const [fixing, setFixing] = useState<VEvent<"set"> | null>(null);
+  const [fixWeight, setFixWeight] = useState(0);
+  const [fixReps, setFixReps] = useState(0);
 
   /* the activity logger */
   const [doing, setDoing] = useState<Activity | null>(null);
@@ -106,6 +111,35 @@ export default function Train() {
     if (ent && !m.bodyweight) await patchState(ent.id, { load: weight });
     setLogging(null);
   }
+
+  function openFix(e: VEvent<"set">) {
+    tap();
+    setFixWeight(e.payload!.weight);
+    setFixReps(e.payload!.reps);
+    setFixing(e);
+  }
+
+  /**
+   * The correction names the set it replaces; every read resolves it, so
+   * volume and the record move with it. The log keeps both rows.
+   */
+  async function saveFix() {
+    const e = fixing;
+    if (!e?.payload || fixReps <= 0) return;
+    tap();
+    await correct(e, { ...e.payload, weight: fixWeight, reps: fixReps });
+    setFixing(null);
+  }
+
+  async function strikeFix() {
+    if (!fixing) return;
+    tap(2);
+    await strike(fixing);
+    setFixing(null);
+  }
+
+  const fixMove = fixing ? session.movements.find(m => m.slug === fixing.payload?.exercise)
+    ?? PROGRAM.flatMap(x => x.movements).find(m => m.slug === fixing.payload?.exercise) : undefined;
 
   const sessionOptions = PROGRAM.map(s => ({ value: s.slug, label: s.name }));
 
@@ -212,12 +246,13 @@ export default function Train() {
                 const p = e.payload!;
                 const pr = !!best && e1rm(p.weight, p.reps) >= best.e1rm;
                 return (
-                  <div key={i} className={"set done" + (pr ? " pr" : "")}>
+                  <button key={i} className={"set done" + (pr ? " pr" : "")}
+                          onClick={() => openFix(e)} aria-label={`Correct set ${i + 1} of ${m.name}`}>
                     <span className="n">{m.time ? "Bout" : `Set ${i + 1}`}</span>
                     {m.time ? `${p.reps}′`
                       : p.weight > 0 ? `${p.weight} × ${p.reps}`
                       : `BW × ${p.reps}`}
-                  </div>
+                  </button>
                 );
               })}
               <button className="set add" onClick={() => openLogger(m)} aria-label={`Log a set of ${m.name}`}>
@@ -330,6 +365,29 @@ export default function Train() {
         <div className="btn-row">
           <button className="btn accent grow" onClick={save} disabled={reps <= 0}>Log set</button>
           <button className="btn quiet" onClick={() => setLogging(null)}>Cancel</button>
+        </div>
+      </Sheet>
+
+      <Sheet title={fixing ? `Correct — ${fixing.payload?.name ?? ""}` : ""} open={!!fixing}
+             onClose={() => setFixing(null)}>
+        {fixing && !fixMove?.bodyweight && !fixMove?.time && (
+          <Field label={`Weight · ${fixing.payload?.unit ?? UNIT}`}>
+            <Stepper value={fixWeight} onChange={setFixWeight} step={2.5} min={0} max={500}
+                     unit={fixing.payload?.unit ?? UNIT} />
+          </Field>
+        )}
+        <Field label={fixMove?.time ? "Minutes" : "Repetitions"}>
+          <Stepper value={fixReps} onChange={setFixReps} step={1} min={0}
+                   max={fixMove?.time ? 240 : 100} unit={fixMove?.time ? "min" : undefined} />
+        </Field>
+        <p className="lede">
+          A correction is a new entry naming this one. The log keeps both, and
+          volume and records read the corrected figure.
+        </p>
+        <div className="btn-row">
+          <button className="btn accent grow" onClick={saveFix} disabled={fixReps <= 0}>Correct</button>
+          <button className="btn quiet" onClick={strikeFix}>Strike</button>
+          <button className="btn quiet" onClick={() => setFixing(null)}>Cancel</button>
         </div>
       </Sheet>
 

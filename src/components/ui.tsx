@@ -198,12 +198,21 @@ export function Text({ value, onChange, placeholder, area, autoFocus }: {
  * without a keyboard ever appearing, which is the whole difference between
  * logging in the gym and meaning to log it later.
  */
+/**
+ * Clamp to the range and round to the step's precision. The precision is
+ * the step's own decimals whatever its size — a 2.5 lb plate step must keep
+ * its half, or 175 + 2.5 is recorded as 178.
+ */
+export function stepClamp(v: number, step: number, min: number, max: number): number {
+  const dp = (String(step).split(".")[1] ?? "").length;
+  return Math.min(max, Math.max(min, Number(v.toFixed(dp))));
+}
+
 export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, unit }: {
   value: number; onChange: (v: number) => void;
   step?: number; min?: number; max?: number; unit?: string;
 }) {
-  const dp = step < 1 ? String(step).split(".")[1].length : 0;
-  const clamp = (v: number) => Math.min(max, Math.max(min, Number(v.toFixed(dp))));
+  const clamp = (v: number) => stepClamp(v, step, min, max);
   const bump = (d: number) => { tap(); onChange(clamp(value + d * step)); };
   return (
     <div className="stepper">
