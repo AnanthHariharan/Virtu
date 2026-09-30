@@ -248,3 +248,15 @@ contradicts, extends, same, unrelated. Confident, related answers become
 links, folded from `link` judgments on read and shown from both ends. No
 embeddings and no graph store: the shortlist narrows, the model judges, the
 ledger keeps the judgment.
+
+## Predictions are held out and baselined
+
+`src/core/model.ts` turns the ledger into one row per day — features from that
+day only, the target from the next (sleep the morning after, or every rite
+kept) — and fits ridge or logistic regression by gradient descent on
+standardised features. It is scored on the latest quarter of days it never saw,
+against always guessing the training average, and shown only when it beats
+that baseline; otherwise it says it has learned nothing. Never evaluate on
+days the model was fitted on, never let a feature read the day it predicts,
+and never impute a figure into the ledger — a missing value is imputed only
+inside the fit.

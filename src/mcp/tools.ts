@@ -4,6 +4,7 @@ import { resolveCorrections } from "@/core/fold";
 import { mintEvent } from "@/core/event";
 import { decideGuard } from "@/core/guard";
 import { threads, week } from "@/core/account";
+import { forecast, type Target } from "@/core/model";
 import { localDate, parseDate, slotFor } from "@/core/time";
 import { judge } from "@/lib/jev-server";
 import { moduleOwning } from "@/modules/registry";
@@ -103,6 +104,12 @@ export function createTools(deps: Deps) {
       const date = q.date ?? localDate(now());
       const rites = await entitiesOf("rite");
       return { date, lines: week(await standing(), date, rites.length, UNIT) };
+    },
+
+    async forecast(q: { target: Target; date?: string }): Promise<Out> {
+      const date = q.date ?? localDate(now());
+      const rites = await entitiesOf("rite");
+      return { date, ...forecast((await standing()).filter(e => e.local_date <= date), rites.length, q.target, date) };
     },
 
     async search(q: { query: string; limit?: number }): Promise<Out> {
