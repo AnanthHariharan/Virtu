@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TypeSafeClient, type Questions } from "@typesafe-ai/sdk";
 import { triageRequest, storeAnswer } from "@/core/triage";
+import { reflectionRequest } from "@/core/reflection";
 import type { Answer } from "@/core/schema";
 
 /**
@@ -30,6 +31,11 @@ export const JudgeBody = z.discriminatedUnion("task", [
       distanceUnit: z.string(),
     }),
   }),
+  z.object({
+    task: z.literal("reflection"),
+    text: z.string().min(1).max(8000),
+    period: z.enum(["day", "week"]),
+  }),
 ]);
 export type JudgeBody = z.infer<typeof JudgeBody>;
 
@@ -50,7 +56,9 @@ export function configured(): boolean {
 
 /** Ask the questions for one task and keep only well-formed answers. */
 export async function judge(body: JudgeBody, client: Pick<TypeSafeClient, "systemOne">): Promise<JudgeResult> {
-  const { state, questions } = triageRequest(body.text, body.context);
+  const { state, questions } = body.task === "triage"
+    ? triageRequest(body.text, body.context)
+    : reflectionRequest(body.text, body.period);
   const res = await client.systemOne({ state, questions: questions as unknown as Questions });
   const answers: Record<string, Answer> = {};
   for (const [id, a] of Object.entries(res.answers)) {

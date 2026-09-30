@@ -127,6 +127,32 @@ describe("judgePending", () => {
   });
 });
 
+describe("reading reflections", () => {
+  it("reads each line once, records features, proposes nothing", async () => {
+    const r = await log("reflection", { text: "Knee sore after rugby.", period: "day" });
+    const { f, calls } = fakeJudge(() => ({ answers: {
+      energy: { type: "score", score: 1, confidence: 0.8, probabilities: { 1: 0.8 } },
+      pain: { type: "noul", noul: 0.93 },
+    } }));
+    expect(await judgePending({ fetch: f })).toBe(1);
+    await judgePending({ fetch: f });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual({ task: "reflection", text: "Knee sore after rugby.", period: "day" });
+    const [j] = await eventsOfKind("judgment");
+    expect(j.payload).toMatchObject({ target: r.client_id, task: "reflection", action: "record", proposal: null });
+    expect(await eventsOfKind("note")).toHaveLength(0);
+  });
+
+  it("a failure on a reflection stops the run before any capture is sent", async () => {
+    await log("reflection", { text: "x", period: "day" });
+    await log("capture", { text: "y" });
+    const { f, calls } = fakeJudge(() => ({ status: 429 }));
+    await judgePending({ fetch: f });
+    expect(calls).toHaveLength(1);
+    expect(await eventsOfKind("judgment")).toHaveLength(0);
+  });
+});
+
 describe("verdicts", () => {
   async function offeredSet() {
     const c = await log("capture", { text: "squat 65 for 8" }, { occurredAt: new Date("2026-09-01T18:00:00Z") });

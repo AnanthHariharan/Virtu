@@ -192,6 +192,19 @@ export const MODULES: Module[] = [
   },
 
   {
+    id: "review", name: "Review", short: "Review", path: "/review", icon: "today",
+    blurb: "The evening line, what is owed, and the week against the last.",
+    owns: ["reflection"],
+    describe(e) {
+      const t = String(p(e).text ?? "");
+      return {
+        title: t.length > 90 ? `${t.slice(0, 88)}…` : t,
+        meta: p(e).period === "week" ? "The week" : "The day",
+      };
+    },
+  },
+
+  {
     id: "inbox", name: "Inbox", short: "Inbox", path: "/inbox", icon: "notes",
     blurb: "Captures sorted by Jev: filed, offered, or left for you.",
     owns: ["judgment", "verdict"],

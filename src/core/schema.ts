@@ -111,6 +111,13 @@ export const SCHEMAS = {
   capture: z.object({ text }).strict(),
 
   /**
+   * A line at the end of the day — or of the week. Kept as written; what a
+   * model reads in it (energy, mood, a mention of pain) is a judgment about
+   * it, never an edit of it.
+   */
+  reflection: z.object({ text, period: z.enum(["day", "week"]) }).strict(),
+
+  /**
    * What a model made of an entry — never the entry itself. Jev's typed
    * answers, the model version that gave them, the proposal code built from
    * them, and what was done: filed automatically, offered, or left alone.
@@ -123,7 +130,8 @@ export const SCHEMAS = {
     model: text,
     answers: z.record(text, Answer),
     proposal: Proposal.nullable(),
-    action: z.enum(["auto", "suggest", "leave"]),
+    // "record": the answers are kept as features and nothing is proposed.
+    action: z.enum(["auto", "suggest", "leave", "record"]),
   }).strict(),
 
   /**

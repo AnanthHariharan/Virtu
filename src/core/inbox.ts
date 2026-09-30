@@ -23,7 +23,7 @@ type Capture = Row<{ text: string }>;
 type Note = Row<{ text: string; files?: string }>;
 export type Judgment = Row<{
   target: string; task: string; model: string;
-  proposal: Proposal | null; action: "auto" | "suggest" | "leave";
+  proposal: Proposal | null; action: "auto" | "suggest" | "leave" | "record";
   answers: Record<string, unknown>;
 }>;
 type Verdict = Row<{ judgment: string; target: string; accepted: boolean; wrote?: string }>;

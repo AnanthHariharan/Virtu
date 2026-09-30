@@ -18,6 +18,7 @@ export const SAMPLES: { [K in EventKind]: Payloads[K] } = {
   task: { project: "Virtu", step: "Ship part one", done: true },
   measure: { metric: "weight", name: "Body weight", value: 71.2, unit: "kg" },
   capture: { text: "bench felt heavy today" },
+  reflection: { text: "Long day. Knee sore after rugby; skipped evening sandhya.", period: "day" },
   judgment: {
     target: "c-1", task: "triage", model: "jev-1.13.0",
     answers: { kind: { type: "choice", choice: "note", confidence: 0.9, probabilities: { note: 0.95, task: 0.05 } } },

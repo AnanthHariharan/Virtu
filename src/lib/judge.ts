@@ -69,9 +69,9 @@ let unavailable = false;
 export function resetJudgeState() { running = false; unavailable = false; }
 
 /**
- * Judge captures that have not been judged. Safe to call constantly, like
- * `flush()`: it no-ops when switched off, offline, unconfigured, or running.
- * Returns how many captures were judged.
+ * Judge captures and read reflections that have not been. Safe to call
+ * constantly, like `flush()`: it no-ops when switched off, offline,
+ * unconfigured, or running. Returns how many entries were judged.
  */
 export async function judgePending(opts: { fetch?: typeof fetch; limit?: number } = {}): Promise<number> {
   if (running || unavailable) return 0;
@@ -85,26 +85,46 @@ export async function judgePending(opts: { fetch?: typeof fetch; limit?: number 
     ]);
     const { items } = buildInbox(captures, notes, judgments as Judgment[], verdicts);
     const todo = items.filter(i => i.state === "waiting").slice(0, opts.limit ?? 10);
-    if (!todo.length) return 0;
+
+    // Reflections are read for features — energy, mood, pain — and nothing
+    // is proposed from them. Each is read once.
+    const read = new Set(judgments.filter(j => j.payload?.task === "reflection").map(j => j.payload!.target));
+    const lines = (await eventsOfKind("reflection")).filter(r => !read.has(r.client_id)).slice(0, opts.limit ?? 10);
+    if (!todo.length && !lines.length) return 0;
 
     const context = await triageContext();
     const headers = { "content-type": "application/json", ...(await authHeader()) };
     let n = 0;
+    let stop = false;
 
-    for (const { capture } of todo) {
-      const text = captureText(capture);
+    /** One request. Returns the answers, or null to stop this run. */
+    const ask = async (body: unknown) => {
       let res: Response;
       try {
-        res = await f("/api/judge", {
-          method: "POST", headers, body: JSON.stringify({ task: "triage", text, context }),
-        });
+        res = await f("/api/judge", { method: "POST", headers, body: JSON.stringify(body) });
       } catch {
-        break;                                     // offline mid-run; next trigger resumes
+        return null;                               // offline mid-run; next trigger resumes
       }
-      if (res.status === 501) { unavailable = true; break; }
-      if (!res.ok) break;                          // 401, 429, 5xx: try again later
+      if (res.status === 501) { unavailable = true; return null; }
+      if (!res.ok) return null;                    // 401, 429, 5xx: try again later
+      return await res.json() as { model: string; answers: Record<string, Answer> };
+    };
 
-      const { model, answers } = await res.json() as { model: string; answers: Record<string, Answer> };
+    for (const r of lines) {
+      const got = await ask({ task: "reflection", text: r.payload!.text, period: r.payload!.period });
+      if (!got) { stop = true; break; }
+      await log("judgment", {
+        target: r.client_id, task: "reflection", model: got.model, answers: got.answers,
+        proposal: null, action: "record",
+      }, { source: "agent" });
+      n++;
+    }
+
+    for (const { capture } of stop ? [] : todo) {
+      const text = captureText(capture);
+      const got = await ask({ task: "triage", text, context });
+      if (!got) break;
+      const { model, answers } = got;
       const d = decideTriage({ client_id: capture.client_id, text }, context, numberCandidates(text), answers);
       await log("judgment", {
         target: capture.client_id, task: "triage", model, answers,

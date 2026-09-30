@@ -95,6 +95,16 @@ describe("handleJudge", () => {
     expect(body.answers.happened).toEqual({ type: "noul", noul: 0.2 });
   });
 
+  it("reads a reflection with its scales and signals, and nothing from the triage set", async () => {
+    const res = await handleJudge(post({ task: "reflection", text: "Knee sore after rugby.", period: "day" }), deps);
+    expect(res.status).toBe(200);
+    const q = sent[0].body.questions;
+    expect(sent[0].body.state).toEqual({ reflection: "Knee sore after rugby.", covers: "a day" });
+    expect(q.energy.type).toBe("score");
+    expect(q.pain.type).toBe("noul");
+    expect(q.kind).toBeUndefined();
+  });
+
   it("passes a rate limit through as 429 and anything else as 502", async () => {
     const limited: Deps = { ...deps, client: () => sdkWith(async () => new Response("{}", { status: 429 })) };
     expect((await handleJudge(post({ task: "triage", text: "x", context }), limited)).status).toBe(429);
