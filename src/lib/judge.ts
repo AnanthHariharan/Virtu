@@ -6,6 +6,7 @@ import { supabase } from "./supabase";
 import { decideTriage, numberCandidates, mergeGates, type Gates, type TriageContext } from "@/core/triage";
 import { buildInbox, type Judgment } from "@/core/inbox";
 import { captureText } from "@/core/commonplace";
+import { shortlist } from "@/core/links";
 import { ACTIVITIES, DISTANCE_UNIT } from "@/data/activities";
 import { UNIT } from "@/data/program";
 import type { Answer } from "@/core/schema";
@@ -95,7 +96,19 @@ export async function judgePending(opts: { fetch?: typeof fetch; limit?: number 
     // is proposed from them. Each is read once.
     const read = new Set(judgments.filter(j => j.payload?.task === "reflection").map(j => j.payload!.target));
     const lines = (await eventsOfKind("reflection")).filter(r => !read.has(r.client_id)).slice(0, opts.limit ?? 10);
-    if (!todo.length && !lines.length) return 0;
+
+    // New notes are cross-referenced against the book: a local shortlist,
+    // then one narrow question per candidate. A note with nothing near it
+    // is left alone; a later note that bears on it will make the link.
+    const linked = new Set(judgments.filter(j => j.payload?.task === "link").map(j => j.payload!.target));
+    const book = notes.map(n => ({ id: n.client_id, text: n.payload?.text ?? "" }));
+    const toLink = notes
+      .filter(n => !linked.has(n.client_id))
+      .map(n => ({ note: n, candidates: shortlist({ id: n.client_id, text: n.payload?.text ?? "" }, book) }))
+      .filter(x => x.candidates.length > 0)
+      .slice(0, opts.limit ?? 10);
+
+    if (!todo.length && !lines.length && !toLink.length) return 0;
 
     const context = await triageContext();
     const gates = await currentGates();
@@ -121,6 +134,16 @@ export async function judgePending(opts: { fetch?: typeof fetch; limit?: number 
       if (!got) { stop = true; break; }
       await log("judgment", {
         target: r.client_id, task: "reflection", model: got.model, answers: got.answers,
+        proposal: null, action: "record",
+      }, { source: "agent" });
+      n++;
+    }
+
+    for (const { note, candidates } of stop ? [] : toLink) {
+      const got = await ask({ task: "link", note: note.payload!.text, candidates });
+      if (!got) { stop = true; break; }
+      await log("judgment", {
+        target: note.client_id, task: "link", model: got.model, answers: got.answers,
         proposal: null, action: "record",
       }, { source: "agent" });
       n++;

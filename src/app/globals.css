@@ -717,6 +717,14 @@ button.row:active { background: var(--paper-3); }
   border-bottom: 1px solid var(--rule-2); padding-bottom: 2px;
 }
 .note-s:hover { color: var(--accent); border-color: var(--accent); }
+.note-l {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rule);
+  font-size: 13px; line-height: 1.4; color: var(--ink-2);
+}
+.note-l .rel {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.11em; color: var(--ink-3); margin-right: 6px;
+}
 
 /* — the module index — */
 .mod {

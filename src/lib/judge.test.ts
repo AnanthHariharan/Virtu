@@ -136,6 +136,24 @@ describe("judgePending", () => {
   });
 });
 
+describe("cross-referencing notes", () => {
+  it("links a new note to the related notes the shortlist finds, once", async () => {
+    const a = await log("note", { text: "Structure is the ornament of a page", head: null, headName: null, source: null, sourceName: null });
+    const b = await log("note", { text: "Ornament hides a weak structure", head: null, headName: null, source: null, sourceName: null });
+    await log("note", { text: "Walk after dinner", head: null, headName: null, source: null, sourceName: null });
+    const { f, calls } = fakeJudge(() => ({ answers: {} }));
+    await judgePending({ fetch: f });
+    const linkCalls = calls.filter(c => c.task === "link");
+    // the two related notes each get a request naming the other; the unrelated one gets none
+    expect(linkCalls).toHaveLength(2);
+    expect(linkCalls.map(c => c.candidates.map((x: any) => x.id)).flat().sort()).toEqual([a.client_id, b.client_id].sort());
+    const links = (await eventsOfKind("judgment")).filter(j => j.payload!.task === "link");
+    expect(links.map(j => j.payload!.action)).toEqual(["record", "record"]);
+    await judgePending({ fetch: f });
+    expect(calls.filter(c => c.task === "link")).toHaveLength(2);
+  });
+});
+
 describe("reading reflections", () => {
   it("reads each line once, records features, proposes nothing", async () => {
     const r = await log("reflection", { text: "Knee sore after rugby.", period: "day" });

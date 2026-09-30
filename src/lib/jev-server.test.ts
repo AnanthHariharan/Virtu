@@ -105,6 +105,19 @@ describe("handleJudge", () => {
     expect(q.kind).toBeUndefined();
   });
 
+  it("asks one relation per candidate for a link, and checks the guard's three questions", async () => {
+    await handleJudge(post({ task: "link", note: "n", candidates: [{ id: "x", text: "t" }] }), deps);
+    expect(Object.keys(sent[0].body.questions)).toEqual(["rel:x"]);
+    await handleJudge(post({
+      task: "guard", said: "slept 6h", today: "2026-09-30",
+      entry: { kind: "measure", payload: { value: 6 }, occurred_at: "2026-09-30T06:00:00Z" },
+    }), deps);
+    expect(Object.keys(sent[1].body.questions)).toEqual(["matches", "plausible", "when"]);
+    // more than eight candidates is refused
+    const many = Array.from({ length: 9 }, (_, i) => ({ id: `x${i}`, text: "t" }));
+    expect((await handleJudge(post({ task: "link", note: "n", candidates: many }), deps)).status).toBe(400);
+  });
+
   it("passes a rate limit through as 429 and anything else as 502", async () => {
     const limited: Deps = { ...deps, client: () => sdkWith(async () => new Response("{}", { status: 429 })) };
     expect((await handleJudge(post({ task: "triage", text: "x", context }), limited)).status).toBe(429);
