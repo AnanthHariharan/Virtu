@@ -2,11 +2,12 @@
 
 import { useMemo } from "react";
 import { Display, Section, Row, Figures, Fig, Empty, Note } from "@/components/ui";
-import { useDay, useEntities, useModules, useAll } from "@/hooks/useLedger";
+import { useDay, useEntities, useModules, useKind } from "@/hooks/useLedger";
 import { MODULES, moduleOwning } from "@/modules/registry";
 import { sessionFor } from "@/data/program";
 import { duration } from "@/data/activities";
-import { SLOTS, slotFor, greeting, longDate, clock, streak } from "@/lib/time";
+import { SLOTS, slotFor, greeting, longDate, clock, streak, localDate } from "@/lib/time";
+import { observedOn, observedByDate } from "@/core/rites";
 import { UNIT } from "@/data/program";
 
 /**
@@ -23,7 +24,8 @@ import { UNIT } from "@/data/program";
  */
 export default function Today() {
   const day = useDay();
-  const all = useAll();
+  // Only the rite history, not the whole ledger, is needed for the streak.
+  const riteLog = useKind("rite");
   const rites = useEntities("rite");
   const meals = useEntities("meal");
   const { enabled } = useModules();
@@ -35,10 +37,8 @@ export default function Today() {
 
   /* ── the state of the day ── */
 
-  const observed = useMemo(() => new Set(
-    day.filter(e => e.kind === "rite" && (e.payload as any)?.observed)
-       .map(e => String((e.payload as any).slug))
-  ), [day]);
+  // The latest event per rite wins, so an un-observed rite reads as open.
+  const observed = useMemo(() => observedOn(day, localDate()), [day]);
 
   const due = rites.filter(r => r.meta?.slot === slot && !observed.has(r.slug));
   const missed = rites.filter(r => {
@@ -60,15 +60,9 @@ export default function Today() {
 
   /* Adherence streak: consecutive days on which every rite was observed. */
   const riteStreak = useMemo(() => {
-    const byDate = new Map<string, Set<string>>();
-    for (const e of all) {
-      if (e.kind !== "rite" || !(e.payload as any)?.observed) continue;
-      const s = byDate.get(e.local_date) ?? new Set();
-      s.add(String((e.payload as any).slug));
-      byDate.set(e.local_date, s);
-    }
+    const byDate = observedByDate(riteLog);
     return streak(d => (byDate.get(d)?.size ?? 0) >= rites.length && rites.length > 0);
-  }, [all, rites.length]);
+  }, [riteLog, rites.length]);
 
   /* ── the feed ── */
 

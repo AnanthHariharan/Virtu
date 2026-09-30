@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Display, Section, Row, Figures, Fig, Note } from "@/components/ui";
-import { useDay, useEntities, useAll, useKind } from "@/hooks/useLedger";
+import { useDay, useEntities, useKind } from "@/hooks/useLedger";
+import { observedOn, observedByDate } from "@/core/rites";
 import { PORTIONS, nextPortion } from "@/data/anushtanas";
 import { log } from "@/lib/ledger";
 import { SLOTS, slotFor, streak, localDate } from "@/lib/time";
@@ -14,7 +15,7 @@ export default function Anushtanas() {
   const router = useRouter();
   const rites = useEntities("rite");
   const day = useDay();
-  const all = useAll();
+  const riteLog = useKind("rite");
   const portions = useKind("portion");
   const slot = slotFor();
 
@@ -38,10 +39,9 @@ export default function Anushtanas() {
     return m;
   }, [portions]);
 
-  const observed = useMemo(() => new Set(
-    day.filter(e => e.kind === "rite" && (e.payload as any)?.observed)
-       .map(e => String((e.payload as any).slug))
-  ), [day]);
+  // The latest event per rite wins: un-marking writes observed:false, and
+  // that has to read back as open, not as still observed.
+  const observed = useMemo(() => observedOn(day, localDate()), [day]);
 
   /**
    * Marking a rite writes an event. Un-marking writes another event with
@@ -72,21 +72,16 @@ export default function Anushtanas() {
   const done = observed.size;
 
   const adherence = useMemo(() => {
-    const byDate = new Map<string, Set<string>>();
-    for (const e of all) {
-      if (e.kind !== "rite" || !(e.payload as any)?.observed) continue;
-      const s = byDate.get(e.local_date) ?? new Set();
-      s.add(String((e.payload as any).slug));
-      byDate.set(e.local_date, s);
-    }
+    const byDate = observedByDate(riteLog);
     const full = (d: string) => (byDate.get(d)?.size ?? 0) >= rites.length && rites.length > 0;
-    const last30 = [...byDate.entries()].slice(-30);
+    // The thirty most recent days with any rite observed, not the oldest.
+    const last30 = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-30);
     return {
       streak: streak(full),
       days: last30.filter(([d]) => full(d)).length,
       seen: last30.length,
     };
-  }, [all, rites.length]);
+  }, [riteLog, rites.length]);
 
   return (
     <>

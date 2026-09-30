@@ -1,77 +1,20 @@
 /**
  * The vocabulary of the ledger.
  *
- * One event table, many kinds. `Payloads` is the single source of truth for
- * what each kind carries — `logEvent` is generic over it, so a typo in a
- * payload key is a compile error rather than a silently empty row six months
- * from now. This is the one thing Nitya's `Record<string, unknown>` payloads
- * could not give us.
+ * One event table, many kinds. The payload of each kind is defined once, as
+ * a runtime schema in `core/schema.ts`, and `Payloads` here is inferred from
+ * it — so `log("set", { rep: 5 })` is still a compile error, and an agent's
+ * JSON can be checked against the very same shape with `parsePayload()`.
+ * Adding a kind means adding its schema there first.
  */
+import type { Payloads, EventKind, Correction } from "@/core/schema";
+
+export type { Payloads, EventKind };
 
 export type Slot = "morning" | "midday" | "evening" | "night";
 
-export interface Payloads {
-  /** An anushtana observed (or explicitly un-observed — the log is append-only). */
-  rite: { slug: string; name: string; slot: Slot; observed: boolean };
-
-  /** A completed mala. */
-  japa: { mantra: string; count: number; target: number; malas: number };
-
-  /** One brahma-yajñam praśna recited. `index` is its place in the cycle. */
-  portion: { slug: string; name: string; index: number };
-
-  /** One working set. `weight: 0` means bodyweight. */
-  set: {
-    exercise: string; name: string;
-    weight: number; reps: number; unit: "kg" | "lb";
-    rpe?: number; session?: string;
-  };
-
-  /** Physical activity that is not lifting. Minutes are the one constant. */
-  activity: {
-    activity: string; name: string;
-    minutes: number;
-    mode?: string;
-    distance?: number; distanceUnit?: string;
-    note?: string;
-  };
-
-  /** A sitting taken — with the bowl eaten — or dismissed with a cause. */
-  meal: {
-    slug: string; name: string; slot: string;
-    status: "ate" | string;
-    bowl?: string | null; bowlName?: string | null;
-    kcal?: number; protein?: number;
-    note?: string;
-  };
-
-  /** A learning filed under a head, optionally sourced. */
-  note: {
-    text: string;
-    head: string | null; headName: string | null;
-    source: string | null; sourceName: string | null;
-  };
-
-  /** A reading session, measured in pages. */
-  read: { book: string; name: string; from: number; to: number };
-
-  /** A piece of writing entering a new state. */
-  piece: { title: string; status: "idea" | "drafting" | "published"; from?: string };
-
-  /** A step of a project struck through, or un-struck. */
-  task: { project: string; step: string; done: boolean };
-
-  /** A number about the body: weight, sleep, resting heart rate. */
-  measure: { metric: string; name: string; value: number; unit: string };
-
-  /** Free text awaiting structure. The only kind with no schema by design. */
-  capture: { text: string };
-}
-
-export type EventKind = keyof Payloads;
-
 /** A correction is a new event that names the one it supersedes. */
-export type Payload<K extends EventKind> = Payloads[K] & { corrects?: string };
+export type Payload<K extends EventKind> = Payloads[K] & Correction;
 
 export type SyncState = "pending" | "synced";
 

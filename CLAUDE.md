@@ -21,16 +21,26 @@ the date over for anyone west of Greenwich logging in the evening.
 module, sheet or agent, no exceptions. A second write path is how you end up
 with two schemas.
 
-**4. Payloads are typed.** `Payloads` in `lib/types.ts` maps each kind to its
-shape and `log()` is generic over it. Adding a kind means adding it there
-first. A payload that is not in that map cannot be written, which is the point.
+**4. Payloads are typed — at compile time and at runtime.** Each kind's shape
+is a Zod schema in `SCHEMAS` in `src/core/schema.ts`; `Payloads` is inferred
+from it and `log()` is generic over it. Anything that arrives as untyped JSON
+(an agent, an import, a model's suggestion) goes through `logUntrusted()`,
+which checks it against the same schema and refuses what does not fit. Adding
+a kind means adding its schema there first, and a sample to
+`src/test/fixtures.ts` — the tests will not compile until you do.
 
 ## Events are append-only
 
 There are no UPDATEs. Un-observing a rite writes `observed: false`; fixing a
 wrong number writes a new event whose payload carries `corrects: <client_id>`
-— `correct()` does this for you. A record that you changed your mind at 22:40
-is worth more than a row that quietly disappeared.
+— `correct()` does this for you, and `strike()` adds `void: true` for an entry
+made by mistake. A record that you changed your mind at 22:40 is worth more
+than a row that quietly disappeared.
+
+Every read in `ledger.ts` passes through `resolveCorrections()`, so no page
+ever counts a corrected set twice. Do not read `db` directly from a page. For
+state that toggles (a rite), the latest event wins — use `observedOn()` in
+`core/rites.ts`, never "any event said true".
 
 `client_id` is minted on the client before the write. It is the idempotency
 key: a queued event that pushes twice after a flaky connection collides on
@@ -47,6 +57,12 @@ IndexedDB is the source of truth for the UI. `log()` writes there and returns;
 it never awaits the network. `flush()` pushes pending rows and is safe to call
 constantly — it no-ops when offline, unconfigured, or already running.
 
+Sync needs a signed-in session: RLS scopes every row to `auth.uid()`, which
+is null without one. Sign-in is a magic link on `/settings`. `flush()` pushes
+pending events *and* entities; `pull()` fetches the whole history from a
+keyset cursor on `(created_at, id)` and never overwrites a row still pending
+locally. All network calls live behind `lib/remote.ts`.
+
 **iOS has no Background Sync API.** The queue drains on app open, focus,
 visibility change, and regaining network. Do not write code that assumes
 background sync; do not add a service worker `sync` handler and believe it
@@ -58,6 +74,18 @@ where site data is blocked, and a failed read must never break a render.
 The service worker is registered **in production only**. Its cache-first rule
 for static assets serves stale chunks in development and silently breaks Fast
 Refresh.
+
+## `src/core` is pure, and tested
+
+`src/core` holds the logic the app, a server worker and an MCP server will all
+share: schemas, correction folding, rite state, the capture inbox. It imports
+nothing but `zod` and itself — no browser, no `db`, no React — and a test
+enforces that. Anything derivable from events belongs here as a pure function
+with a test, not inline in a page.
+
+`npm test` runs Vitest. Ledger and sync tests run against `fake-indexeddb` and
+an in-memory remote, with `TZ=America/Los_Angeles` so a date bug that only
+shows in the evening west of Greenwich shows in CI.
 
 ## Adding a module
 

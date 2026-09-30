@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Glyph from "@/components/Glyph";
-import { Display, Section, Note, Switch, Figures, Fig } from "@/components/ui";
+import { Display, Section, Note, Switch, Figures, Fig, Row } from "@/components/ui";
 import { MODULES, PLANNED } from "@/modules/registry";
 import { useModules, useAll } from "@/hooks/useLedger";
 import { exportAll } from "@/lib/ledger";
@@ -90,17 +90,12 @@ export default function Modules() {
       ))}
 
       <Section sub>The book itself</Section>
-      <div className="row">
-        <span className="mk" aria-hidden="true">⇄</span>
-        <span className="bd">
-          <span className="t">{hasRemote() ? "Syncing to Supabase" : "Local only"}</span>
-          <span className="m">
-            {hasRemote()
-              ? "Writes land locally and push when the network allows"
-              : "No database configured — IndexedDB is the whole store"}
-          </span>
-        </span>
-      </div>
+      <Row mark="⇄"
+           title={hasRemote() ? "Sync and account" : "Local only"}
+           meta={hasRemote()
+             ? "Sign in, and writes push when the network allows"
+             : "No database configured — IndexedDB is the whole store"}
+           value="→" href="/settings" />
       <div className="row">
         <span className="mk" aria-hidden="true">↓</span>
         <span className="bd">
