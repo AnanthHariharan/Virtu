@@ -8,6 +8,7 @@ import { log } from "@/lib/ledger";
 import { tap } from "@/lib/haptics";
 import { unfiledCaptures, captureText } from "@/core/commonplace";
 import { acceptedTargets } from "@/core/inbox";
+import { linksFrom, neighbours } from "@/core/links";
 
 /**
  * The commonplace book.
@@ -26,6 +27,7 @@ export default function Commonplace() {
   const notes = useKind("note");
   const captures = useKind("capture");
   const verdicts = useKind("verdict");
+  const judgments = useKind("judgment");
 
   const [head, setHead] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -63,6 +65,11 @@ export default function Commonplace() {
   }
 
   // Filed by link, so rewording a capture on its way in still files it.
+  // Cross-references, folded from Jev's link judgments. Only notes that still
+  // stand are shown; a struck note takes its links with it.
+  const near = useMemo(() => neighbours(linksFrom(judgments as any)), [judgments]);
+  const byId = useMemo(() => new Map(notes.map(n => [n.client_id, n])), [notes]);
+
   // A capture accepted from the inbox as a set or a measure is filed too.
   const unfiled = useMemo(
     () => unfiledCaptures(captures, notes, acceptedTargets(verdicts)), [captures, notes, verdicts]);
@@ -122,6 +129,16 @@ export default function Commonplace() {
                 <span>{e.local_date}</span>
               </div>
               <div className="note-t">{p.text}</div>
+              {(near.get(e.client_id) ?? [])
+                .filter(x => byId.has(x.id)).slice(0, 3)
+                .map(x => {
+                  const t = byId.get(x.id)!.payload!.text;
+                  return (
+                    <div className="note-l" key={x.id}>
+                      <span className="rel">{x.reads}</span> {t.length > 80 ? `${t.slice(0, 78)}…` : t}
+                    </div>
+                  );
+                })}
               {book && (
                 <button className="note-s" onClick={() => { tap(); router.push(`/read/${book.slug}`); }}>
                   → {book.name}

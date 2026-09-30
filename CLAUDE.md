@@ -17,9 +17,12 @@ Tuesday's session on Thursday. `local_date` is the user's calendar day; use
 `localDate()` from `lib/time`, never `toISOString().slice(0,10)`, which rolls
 the date over for anyone west of Greenwich logging in the evening.
 
-**3. One write path.** Every write goes through `log()` in `lib/ledger.ts` —
-module, sheet or agent, no exceptions. A second write path is how you end up
-with two schemas.
+**3. One write path.** Every row is minted by `mintEvent()` in
+`src/core/event.ts` and validated against `SCHEMAS`. In the app that happens
+inside `log()` in `lib/ledger.ts` — module, sheet or triage, no exceptions. The
+MCP server mints with the same function and appends to the synced store; it
+never builds a row by hand. A second constructor is how you end up with two
+schemas.
 
 **4. Payloads are typed — at compile time and at runtime.** Each kind's shape
 is a Zod schema in `SCHEMAS` in `src/core/schema.ts`; `Payloads` is inferred
@@ -225,7 +228,23 @@ numbers) and four Nouls (pain, a skipped practice, a person, gratitude),
 stored as a `judgment` with `action: "record"`. They are features; nothing is
 ever written from them but the judgment itself.
 
-## Not yet built
+## The MCP server
 
-- **The MCP server.** The ledger as a queryable surface, with agent writes
-  going through `logUntrusted()` like everything else.
+`npm run mcp` serves the ledger over stdio (`src/mcp`). It reads the synced
+copy — Supabase with a service-role key scoped by hand to `VIRTU_USER_ID`, or a
+Settings export via `VIRTU_EXPORT` — because a laptop cannot reach the phone's
+IndexedDB. Reads resolve corrections like every read in the app. Writes are
+narrow: `capture` drops a raw line into the inbox; `log_event` writes a shaped
+entry only if the schema accepts it and Jev's guard (`core/guard.ts`) agrees it
+records what the user said, is plausible, and has the right time — and writes
+the guard's judgment beside it. With no TypeSafe key, `log_event` refuses.
+Agents never write judgments or verdicts.
+
+## The commonplace is cross-referenced
+
+A new note is shortlisted against the book on the device (`core/links.ts`,
+shared rare words), then Jev answers one Choice per candidate — supports,
+contradicts, extends, same, unrelated. Confident, related answers become
+links, folded from `link` judgments on read and shown from both ends. No
+embeddings and no graph store: the shortlist narrows, the model judges, the
+ledger keeps the judgment.

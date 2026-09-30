@@ -41,6 +41,24 @@ of is filed under its head; a set, a measure, a run or pages read is only
 *offered* in the Inbox, with its figures on steppers. Every accept and refusal
 is written as a verdict — the labels that will tune the thresholds.
 
+### The ledger as an MCP server
+
+```bash
+VIRTU_EXPORT=~/Downloads/virtu-2026-09-30.json npm run mcp
+```
+
+Or point it at Supabase with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and
+`VIRTU_USER_ID` (keep the service key on your own machine). To use it from
+Claude Code:
+
+```bash
+claude mcp add virtu -e VIRTU_EXPORT=/path/to/export.json -e TYPESAFE_API_KEY=... -- npm --prefix /path/to/Virtu run --silent mcp
+```
+
+Tools: `summary`, `events`, `day`, `account`, `week`, `search` (all read-only),
+`capture` (a raw line into the inbox), and `log_event` (a shaped entry, written
+only after Jev checks it against the user's own words).
+
 ### Tests
 
 ```bash
@@ -126,6 +144,10 @@ src/core/            pure, shared logic: schemas, corrections, rite state
   reflection.ts      what Jev reads in an evening line: four scales, four signals
   account.ts         what is owed, as weight × urgency; the week against the last
   lab.ts             verdicts as labels: reliability, calibration error, replay
+  event.ts           mintEvent(): the one constructor for a ledger row
+  guard.ts           Jev's three checks on an agent's write
+  links.ts           the commonplace, cross-referenced
+src/mcp/             the ledger as an MCP server: stores, tools, stdio
   time.ts            local dates, parts of the day, Epley, streaks
 src/lib/
   types.ts           Payloads, inferred from core/schema
@@ -204,9 +226,9 @@ later, against real captured text.
 
 **Now.** Log real things from the phone. No model anywhere.
 
-**Next.** Expose the ledger as an MCP server so an agent can query your own
-data. Every event already carries `source: 'agent'` as an option, and every
-agent write would go through the same `log()` the interface uses.
+**Now, too.** The ledger is an MCP server (`npm run mcp`): an agent can read
+any of it, and write only through the same constructor and schema as the app,
+behind a calibrated check against the user's own words.
 
 **After that.** Free text → structure, with the captures as the eval set.
 Extraction is the right job for a local model precisely because it has ground

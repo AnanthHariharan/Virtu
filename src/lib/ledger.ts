@@ -5,6 +5,7 @@ import { remote, type Cursor } from "./remote";
 import { localDate } from "./time";
 import { parsePayload } from "@/core/schema";
 import { resolveCorrections } from "@/core/fold";
+import { mintEvent } from "@/core/event";
 import type { VEvent, Entity, EventKind, Payload } from "./types";
 
 /**
@@ -26,14 +27,6 @@ export function subscribe(fn: Listener): () => void {
 }
 function emit() { listeners.forEach(fn => fn()); }
 
-function uuid(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-    const r = (Math.random() * 16) | 0;
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-  });
-}
-
 export interface LogOptions {
   occurredAt?: Date;
   raw?: string;
@@ -47,22 +40,8 @@ export interface LogOptions {
 export async function log<K extends EventKind>(
   kind: K, payload: Payload<K>, opts: LogOptions = {}
 ): Promise<VEvent<K>> {
-  const when = opts.occurredAt ?? new Date();
-  const ev: VEvent<K> = {
-    id: uuid(),
-    client_id: uuid(),
-    kind,
-    occurred_at: when.toISOString(),
-    recorded_at: new Date().toISOString(),
-    local_date: localDate(when),
-    raw: opts.raw ?? null,
-    payload,
-    // A bare capture is 'raw' and waits for structure; anything the UI has
-    // already shaped is confirmed on arrival.
-    status: kind === "capture" ? "raw" : "confirmed",
-    source: opts.source ?? "phone",
-    _sync: "pending",
-  };
+  // The same constructor the MCP server uses: one shape for every row.
+  const ev: VEvent<K> = { ...mintEvent(kind, payload, opts), _sync: "pending" };
 
   await safe(() => db.put("events", ev), undefined);
   emit();

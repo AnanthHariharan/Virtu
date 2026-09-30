@@ -2,6 +2,8 @@ import { z } from "zod";
 import { TypeSafeClient, type Questions } from "@typesafe-ai/sdk";
 import { triageRequest, storeAnswer } from "@/core/triage";
 import { reflectionRequest } from "@/core/reflection";
+import { guardRequest } from "@/core/guard";
+import { linkRequest } from "@/core/links";
 import type { Answer } from "@/core/schema";
 
 /**
@@ -36,6 +38,17 @@ export const JudgeBody = z.discriminatedUnion("task", [
     text: z.string().min(1).max(8000),
     period: z.enum(["day", "week"]),
   }),
+  z.object({
+    task: z.literal("guard"),
+    said: z.string().min(1).max(4000),
+    entry: z.object({ kind: z.string(), payload: z.record(z.string(), z.unknown()), occurred_at: z.string() }),
+    today: z.string(),
+  }),
+  z.object({
+    task: z.literal("link"),
+    note: z.string().min(1).max(4000),
+    candidates: z.array(z.object({ id: z.string(), text: z.string().max(4000) })).min(1).max(8),
+  }),
 ]);
 export type JudgeBody = z.infer<typeof JudgeBody>;
 
@@ -56,9 +69,11 @@ export function configured(): boolean {
 
 /** Ask the questions for one task and keep only well-formed answers. */
 export async function judge(body: JudgeBody, client: Pick<TypeSafeClient, "systemOne">): Promise<JudgeResult> {
-  const { state, questions } = body.task === "triage"
-    ? triageRequest(body.text, body.context)
-    : reflectionRequest(body.text, body.period);
+  const { state, questions } =
+    body.task === "triage" ? triageRequest(body.text, body.context)
+    : body.task === "reflection" ? reflectionRequest(body.text, body.period)
+    : body.task === "guard" ? guardRequest(body.said, body.entry, body.today)
+    : linkRequest(body.note, body.candidates);
   const res = await client.systemOne({ state, questions: questions as unknown as Questions });
   const answers: Record<string, Answer> = {};
   for (const [id, a] of Object.entries(res.answers)) {
