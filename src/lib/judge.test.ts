@@ -88,6 +88,15 @@ describe("judgePending", () => {
     expect((await inbox()).auto).toHaveLength(1);
   });
 
+  it("uses gates tuned in the lab", async () => {
+    await setMeta("lab:gates", { autoNote: { kind: 0.95, head: 0.7 } });
+    await log("capture", { text: "Structure is the ornament" });
+    const { f } = fakeJudge(() => ({ answers: { kind: choice("note", 0.9), head: choice("craft", 0.85) } }));
+    await judgePending({ fetch: f });
+    expect((await eventsOfKind("judgment"))[0].payload!.action).toBe("suggest");
+    expect(await eventsOfKind("note")).toHaveLength(0);
+  });
+
   it("judges each capture once", async () => {
     await log("capture", { text: "one" });
     const { f } = fakeJudge(() => ({ answers: { kind: choice("other") } }));
@@ -216,6 +225,10 @@ describe("verdicts", () => {
     const notes = await eventsOfKind("note");
     expect(notes).toHaveLength(1);
     expect(notes[0].payload).toMatchObject({ head: "method", headName: "Method" });
+    // the verdict names the correction that now stands, not the original
+    const v = (await eventsOfKind("verdict"))[0];
+    expect(v.payload!.wrote).toBe(notes[0].client_id);
+    expect(v.payload!.wrote).not.toBe(n.client_id);
     expect((await inbox()).auto).toEqual([]);
 
     const second = await autoNote();

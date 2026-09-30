@@ -125,6 +125,7 @@ src/core/            pure, shared logic: schemas, corrections, rite state
   inbox.ts           the inbox, folded from captures, judgments and verdicts
   reflection.ts      what Jev reads in an evening line: four scales, four signals
   account.ts         what is owed, as weight × urgency; the week against the last
+  lab.ts             verdicts as labels: reliability, calibration error, replay
   time.ts            local dates, parts of the day, Epley, streaks
 src/lib/
   types.ts           Payloads, inferred from core/schema
