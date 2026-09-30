@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Display, Section, Row, Figures, Fig, Note, Sheet, Field, Stepper, Empty } from "@/components/ui";
-import { useAll, useKind } from "@/hooks/useLedger";
+import { Display, Section, Row, Figures, Fig, Note, Sheet, Field, Stepper, Empty, Segmented } from "@/components/ui";
+import { useAll, useKind, useEntities } from "@/hooks/useLedger";
+import { forecast, TARGETS, MIN_DAYS, type Target } from "@/core/model";
+import { localDate } from "@/lib/time";
 import { examples, reliability, ece, sweep, suggestThreshold, replay, type Example } from "@/core/lab";
 import { GATES, type Gates } from "@/core/triage";
 import { currentGates, setGates } from "@/lib/judge";
@@ -41,6 +43,15 @@ export default function Lab() {
   const [draft, setDraft] = useState<Flat>(flat(GATES));
 
   useEffect(() => { void currentGates().then(setLive); }, []);
+
+  /* what the days predict */
+  const rites = useEntities("rite");
+  const [target, setTarget] = useState<Target>("sleep");
+  const report = useMemo(
+    () => forecast(all as any, rites.length, target, localDate()), [all, rites.length, target]);
+  const spec = TARGETS[target];
+  const fmtY = (v: number) => spec.kind === "binary" ? pct(v) : `${v.toFixed(1)} ${spec.unit}`;
+  const fmtErr = (v: number) => spec.kind === "binary" ? v.toFixed(3) : `${v.toFixed(2)} ${spec.unit}`;
 
   const { proposals, fields } = useMemo(
     () => examples(judgments as any, verdicts as any, all as any), [judgments, verdicts, all]);
@@ -137,6 +148,31 @@ export default function Lab() {
         <button className="btn quiet" onClick={openTuner}>Tune the gates</button>
       </div>
 
+      <Section count={spec.label.toLowerCase()}>What the days predict</Section>
+      <div style={{ marginTop: 14 }}>
+        <Segmented value={target} onChange={setTarget}
+                   options={[{ value: "sleep", label: "Sleep" }, { value: "rites", label: "Rites" }]} />
+      </div>
+      {report.status === "insufficient" && (
+        <Row mark="·" title="Not enough days yet"
+             meta={`${report.labelled} of ${MIN_DAYS} days with a known outcome${target === "sleep" ? " — log sleep each morning" : ""}`} />
+      )}
+      {report.status === "no-better" && (
+        <Row mark="·" title="No better than the average"
+             meta={`On the ${report.test} latest days, off by ${fmtErr(report.score!)} against ${fmtErr(report.baseline!)} by always guessing the average`} />
+      )}
+      {report.status === "useful" && (
+        <>
+          <Row mark="◆" markOn title="Tomorrow" value={report.tomorrow === null ? "—" : fmtY(report.tomorrow)}
+               meta={`On the ${report.test} latest days, which it never saw: off by ${fmtErr(report.score!)}, against ${fmtErr(report.baseline!)} by the average`} />
+          {report.drivers.slice(0, 5).map(d => (
+            <Row key={d.feature} mark={d.effect > 0 ? "↑" : "↓"} title={d.label}
+                 meta={`one standard deviation ${d.effect > 0 ? "raises" : "lowers"} it`}
+                 value={spec.kind === "binary" ? `${d.effect > 0 ? "+" : ""}${d.effect.toFixed(2)}` : `${d.effect > 0 ? "+" : ""}${d.effect.toFixed(2)} ${spec.unit}`} />
+          ))}
+        </>
+      )}
+
       {models.length > 0 && (
         <>
           <Section count={`${models.length}`}>Models</Section>
@@ -175,6 +211,13 @@ export default function Lab() {
         count-weighted gap between how sure Jev said it was and how often it
         was right. New gates apply to captures judged from now on — nothing
         already written is changed. The arithmetic is in <b>src/core/lab.ts</b>.
+        <br /><br />
+        The prediction is ridge (sleep) or logistic (rites) regression over one
+        row per day — rites kept, sets, volume, minutes, pages, notes, last
+        night&rsquo;s sleep, and what Jev read in the evening&rsquo;s line —
+        fitted on the earlier three quarters of your days and scored on the
+        rest it never saw. It is shown only when it beats always guessing the
+        average; otherwise it says so. It is in <b>src/core/model.ts</b>.
       </Note>
     </>
   );

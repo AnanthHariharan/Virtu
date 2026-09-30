@@ -59,6 +59,13 @@ export function buildServer(deps: Deps): McpServer {
     annotations: read,
   }, async q => json(await tools.week(q)));
 
+  server.registerTool("forecast", {
+    description: "Tomorrow's sleep, or whether every rite will be kept, predicted from the days so far — with the " +
+      "held-out error against always guessing the average, and what moves it. Says plainly when it has learned nothing.",
+    inputSchema: { target: z.enum(["sleep", "rites"]), date: date.optional() },
+    annotations: read,
+  }, async q => json(await tools.forecast(q)));
+
   server.registerTool("search", {
     description: "Notes, captures and reflections containing every word of the query.",
     inputSchema: { query: z.string().min(1), limit: z.number().int().min(1).max(100).optional() },

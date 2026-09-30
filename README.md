@@ -55,7 +55,7 @@ Claude Code:
 claude mcp add virtu -e VIRTU_EXPORT=/path/to/export.json -e TYPESAFE_API_KEY=... -- npm --prefix /path/to/Virtu run --silent mcp
 ```
 
-Tools: `summary`, `events`, `day`, `account`, `week`, `search` (all read-only),
+Tools: `summary`, `events`, `day`, `account`, `week`, `forecast`, `search` (all read-only),
 `capture` (a raw line into the inbox), and `log_event` (a shaped entry, written
 only after Jev checks it against the user's own words).
 
@@ -147,6 +147,7 @@ src/core/            pure, shared logic: schemas, corrections, rite state
   event.ts           mintEvent(): the one constructor for a ledger row
   guard.ts           Jev's three checks on an agent's write
   links.ts           the commonplace, cross-referenced
+  model.ts           what the days predict: held out, baselined, inspectable
 src/mcp/             the ledger as an MCP server: stores, tools, stdio
   time.ts            local dates, parts of the day, Epley, streaks
 src/lib/
@@ -230,9 +231,10 @@ later, against real captured text.
 any of it, and write only through the same constructor and schema as the app,
 behind a calibrated check against the user's own words.
 
-**After that.** Free text → structure, with the captures as the eval set.
-Extraction is the right job for a local model precisely because it has ground
-truth.
+**And now.** Captures are triaged by Jev, with your verdicts as the eval set
+(`/lab`); evening lines are read for features; and a small, honest model
+predicts tomorrow's sleep and rites from the days so far — shown only when it
+beats guessing the average.
 
 ## What it is still waiting on
 

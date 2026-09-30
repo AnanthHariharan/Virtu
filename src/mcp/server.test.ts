@@ -49,7 +49,7 @@ describe("the MCP server", () => {
   it("lists its tools, marking reads as read-only", async () => {
     const { client } = await connect({ store });
     const { tools } = await client.listTools();
-    expect(tools.map(t => t.name).sort()).toEqual(["account", "capture", "day", "events", "log_event", "search", "summary", "week"]);
+    expect(tools.map(t => t.name).sort()).toEqual(["account", "capture", "day", "events", "forecast", "log_event", "search", "summary", "week"]);
     expect(tools.find(t => t.name === "events")!.annotations?.readOnlyHint).toBe(true);
     expect(tools.find(t => t.name === "log_event")!.annotations?.readOnlyHint).toBe(false);
   });
@@ -90,6 +90,13 @@ describe("the MCP server", () => {
     expect(acct.threads.map((t: any) => t.type)).toContain("rites");
     const wk = await call("week", {});
     expect(wk.lines.find((l: any) => l.label === "Sets")).toEqual({ label: "Sets", now: 0, prev: 0 });
+  });
+
+  it("forecasts honestly: with too few days it says so", async () => {
+    store.rows.push(row("measure", { metric: "sleep", name: "Sleep", value: 7, unit: "h" }));
+    const { call } = await connect({ store });
+    const res = await call("forecast", { target: "sleep" });
+    expect(res).toMatchObject({ date: "2026-09-30", target: "sleep", status: "insufficient", tomorrow: null });
   });
 
   it("capture writes a raw line as the agent's, unguarded", async () => {
