@@ -197,6 +197,22 @@ Jev (TypeSafe's System One model) triages captures. The rules are in
 - **Off by default.** Triage sends capture text to a third party, so it runs
   only once switched on in Settings. Send the least state a judgment needs.
 
+## Accountability is arithmetic
+
+`threads()` in `src/core/account.ts` computes what is owed — rites past their
+part of the day, a run about to break, a session unopened by evening, a lapse,
+a stalled project, captures waiting, a book set down, a measure no longer
+kept, pain noted — as facts from the ledger. Each is scored weight × urgency,
+the weights are `WEIGHTS` in code, and the arithmetic is shown beside every
+thread. Today shows the top one. When the order is wrong, change a weight; do
+not ask a model which thread matters most.
+
+Reflections are kept as written. With Jev on, each is read once for four
+Scores (energy, mood, stress, focus — levels that describe situations, never
+numbers) and four Nouls (pain, a skipped practice, a person, gratitude),
+stored as a `judgment` with `action: "record"`. They are features; nothing is
+ever written from them but the judgment itself.
+
 ## Not yet built
 
 - **The MCP server.** The ledger as a queryable surface, with agent writes

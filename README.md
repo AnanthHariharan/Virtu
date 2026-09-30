@@ -123,6 +123,9 @@ src/core/            pure, shared logic: schemas, corrections, rite state
   schema.ts          the schema of every event kind, in one place (Zod)
   triage.ts          Jev's questions for a capture, and the rules that decide
   inbox.ts           the inbox, folded from captures, judgments and verdicts
+  reflection.ts      what Jev reads in an evening line: four scales, four signals
+  account.ts         what is owed, as weight × urgency; the week against the last
+  time.ts            local dates, parts of the day, Epley, streaks
 src/lib/
   types.ts           Payloads, inferred from core/schema
   ledger.ts          THE write path. log(), corrections, the sync loop, export
@@ -132,7 +135,6 @@ src/lib/
   db.ts              a small IndexedDB wrapper, no dependency
   seed.ts            src/data → entity rows, versioned per collection
   haptics.ts         iOS haptics via the switch trick, and the bell
-  time.ts            local dates, parts of the day, Epley, streaks
 src/modules/
   registry.ts        the ecosystem. Modules are data, and self-describing
 src/components/

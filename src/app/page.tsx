@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { Display, Section, Row, Figures, Fig, Empty, Note } from "@/components/ui";
-import { useDay, useEntities, useModules, useKind } from "@/hooks/useLedger";
+import { useDay, useEntities, useModules, useKind, useAll } from "@/hooks/useLedger";
+import { threads } from "@/core/account";
 import { MODULES, moduleOwning } from "@/modules/registry";
 import { sessionFor } from "@/data/program";
 import { duration } from "@/data/activities";
@@ -66,7 +67,17 @@ export default function Today() {
 
   /* ── the feed ── */
 
+  // A rite's line in the feed is its latest event: one marked and then
+  // unmarked reads as nothing, not as observed at the first time.
+  const latestRite = new Map<string, string>();
+  for (const e of day) {
+    if (e.kind !== "rite") continue;
+    const slug = String((e.payload as any)?.slug);
+    if (!latestRite.has(slug)) latestRite.set(slug, e.client_id);   // day is newest-first
+  }
+
   const feed = day.map(e => {
+    if (e.kind === "rite" && latestRite.get(String((e.payload as any)?.slug)) !== e.client_id) return null;
     const mod = moduleOwning(e.kind);
     if (!mod || !enabled(mod.id)) return null;
     const line = mod.describe(e);
@@ -84,6 +95,25 @@ export default function Today() {
       />
     );
   }).filter(Boolean);
+
+  /*
+   * The one thing most worth doing, from the account in src/core. It needs
+   * the whole ledger — a stalled project or a lapse is a question about
+   * weeks — so it is the one read here that is not of today alone.
+   */
+  const all = useAll();
+  const books = useEntities("book");
+  const metrics = useEntities("metric");
+  const owed = useMemo(() => enabled("review") ? threads({
+    today: localDate(now), slot, events: all,
+    rites: rites.map(r => ({ slug: r.slug, name: r.name, slot: String(r.meta?.slot) })),
+    session: session ? { name: session.name } : null,
+    books: books.map(b => ({ slug: b.slug, name: b.name })),
+    metrics: metrics.map(m => ({ slug: m.slug, name: m.name })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }) : [], [all, rites, books, metrics, slot, enabled]);
+  // Rites already stand under "Due now"; the account names what else is owed.
+  const top = owed.find(t => !(t.type === "rites" && (due.length > 0 || missed.length > 0)));
 
   /* Standing invitations: what is open, from the modules that are on. */
   const standing = MODULES
@@ -140,6 +170,15 @@ export default function Today() {
         </>
       )}
 
+      {/* ── the account ── */}
+      {top && (
+        <>
+          <Section count={`${owed.length} open`}>Owed</Section>
+          <Row mark="!" markOn={!due.length && !missed.length} title={top.title} meta={top.detail}
+               value="→" href="/review" />
+        </>
+      )}
+
       {/* ── the session, if the day has one ── */}
       {enabled("train") && session && (
         <>
@@ -176,7 +215,7 @@ export default function Today() {
         <>
           <Section>Standing</Section>
           {standing.map(m => (
-            <Row key={m.id} mark="·" title={m.name} meta={m.owns.join(" · ")} value="→" href={m.path} />
+            <Row key={m.id} mark="·" title={m.name} meta={m.blurb} value="→" href={m.path} />
           ))}
         </>
       )}
